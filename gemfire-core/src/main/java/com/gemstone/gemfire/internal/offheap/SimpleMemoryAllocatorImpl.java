@@ -55,7 +55,7 @@ import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
  * @author Kirk Lund
  * @since 9.0
  */
-public final class SimpleMemoryAllocatorImpl implements MemoryAllocator {
+public class SimpleMemoryAllocatorImpl implements MemoryAllocator {
 
   static final Logger logger = LogService.getLogger();
   
@@ -85,10 +85,14 @@ public final class SimpleMemoryAllocatorImpl implements MemoryAllocator {
    */
   public final static int HUGE_MULTIPLE = 256;
   
-  volatile OffHeapMemoryStats stats;
+  private volatile OffHeapMemoryStats stats;
   
-  volatile OutOfOffHeapMemoryListener ooohml;
+  private volatile OutOfOffHeapMemoryListener ooohml;
   
+  OutOfOffHeapMemoryListener getOutOfOffHeapMemoryListener() {
+    return this.ooohml;
+  }
+
   /** The MemoryChunks that this allocator is managing by allocating smaller chunks of them.
    * The contents of this array never change.
    */
@@ -103,7 +107,7 @@ public final class SimpleMemoryAllocatorImpl implements MemoryAllocator {
   private volatile MemoryUsageListener[] memoryUsageListeners = new MemoryUsageListener[0];
   
   private static SimpleMemoryAllocatorImpl singleton = null;
-  final ChunkFactory chunkFactory;
+  private final ChunkFactory chunkFactory;
   
   public static SimpleMemoryAllocatorImpl getAllocator() {
     SimpleMemoryAllocatorImpl result = singleton;

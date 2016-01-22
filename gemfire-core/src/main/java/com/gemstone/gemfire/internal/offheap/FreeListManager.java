@@ -56,6 +56,7 @@ public class FreeListManager {
   }
   private void getLiveChunks(UnsafeMemoryChunk slab, List<Chunk> result) {
     long addr = slab.getMemoryAddress();
+    ChunkFactory cf = this.ma.getChunkFactory();
     while (addr <= (slab.getMemoryAddress() + slab.getSize() - Chunk.MIN_CHUNK_SIZE)) {
       Fragment f = isAddrInFragmentFreeSpace(addr);
       if (f != null) {
@@ -64,7 +65,7 @@ public class FreeListManager {
         int curChunkSize = Chunk.getSize(addr);
         int refCount = Chunk.getRefCount(addr);
         if (refCount > 0) {
-          result.add(this.ma.chunkFactory.newChunk(addr));
+          result.add(cf.newChunk(addr));
         }
         addr += curChunkSize;
       }
@@ -172,11 +173,12 @@ public class FreeListManager {
       result = basicAllocate(size, true, chunkType);
       result.setDataSize(size);
     }
-    this.ma.stats.incObjects(1);
+    OffHeapMemoryStats stats = this.ma.getStats();
+    stats.incObjects(1);
     int resultSize = result.getSize();
     this.allocatedSize.addAndGet(resultSize);
-    this.ma.stats.incUsedMemory(resultSize);
-    this.ma.stats.incFreeMemory(-resultSize);
+    stats.incUsedMemory(resultSize);
+    stats.incFreeMemory(-resultSize);
     result.initializeUseCount();
     this.ma.notifyListeners();
 
@@ -220,14 +222,15 @@ public class FreeListManager {
     try {
       throw failure;
     } finally {
-      this.ma.ooohml.outOfOffHeapMemory(failure);
+      this.ma.getOutOfOffHeapMemoryListener().outOfOffHeapMemory(failure);
     }
   }
 
   private void logOffHeapState(int chunkSize) {
     if (InternalDistributedSystem.getAnyInstance() != null) {
       LogWriter lw = InternalDistributedSystem.getAnyInstance().getLogWriter();
-      lw.info("OutOfOffHeapMemory allocating size of " + chunkSize + ". allocated=" + this.allocatedSize.get() + " compactions=" + this.compactCount.get() + " objects=" + this.ma.stats.getObjects() + " free=" + this.ma.stats.getFreeMemory() + " fragments=" + this.ma.stats.getFragments() + " largestFragment=" + this.ma.stats.getLargestFragment() + " fragmentation=" + this.ma.stats.getFragmentation());
+      OffHeapMemoryStats stats = this.ma.getStats();
+      lw.info("OutOfOffHeapMemory allocating size of " + chunkSize + ". allocated=" + this.allocatedSize.get() + " compactions=" + this.compactCount.get() + " objects=" + stats.getObjects() + " free=" + stats.getFreeMemory() + " fragments=" + stats.getFragments() + " largestFragment=" + stats.getLargestFragment() + " fragmentation=" + stats.getFragmentation());
       logFragmentState(lw);
       logTinyState(lw);
       logHugeState(lw);
@@ -523,7 +526,8 @@ public class FreeListManager {
         if (fragment.allocate(oldOffset, newOffset)) {
           // We did the allocate!
           this.lastFragmentAllocation.set(fragIdx);
-          Chunk result = this.ma.chunkFactory.newChunk(fragment.getMemoryAddress()+oldOffset, chunkSize+extraSize, chunkType);
+          ChunkFactory cf = this.ma.getChunkFactory();
+          Chunk result = cf.newChunk(fragment.getMemoryAddress()+oldOffset, chunkSize+extraSize, chunkType);
           allocSize -= chunkSize+extraSize;
           oldOffset += extraSize;
           while (allocSize > 0) {
@@ -531,7 +535,7 @@ public class FreeListManager {
             // we add the batch ones immediately to the freelist
             result.readyForFree();
             free(result.getMemoryAddress(), false);
-            result = this.ma.chunkFactory.newChunk(fragment.getMemoryAddress()+oldOffset, chunkSize, chunkType);
+            result = cf.newChunk(fragment.getMemoryAddress()+oldOffset, chunkSize, chunkType);
             allocSize -= chunkSize;
           }
 
@@ -566,7 +570,7 @@ public class FreeListManager {
     if (clq != null) {
       long memAddr = clq.poll();
       if (memAddr != 0) {
-        Chunk result = this.ma.chunkFactory.newChunk(memAddr, chunkType);
+        Chunk result = this.ma.getChunkFactory().newChunk(memAddr, chunkType);
 
         // Data integrity check.
         if(this.ma.validateMemoryWithFill) {          
@@ -599,7 +603,7 @@ public class FreeListManager {
         if (chunkType.getSrcType() != Chunk.getSrcType(result.getMemoryAddress())) {
           // The java wrapper class that was cached in the huge chunk list is the wrong type.
           // So allocate a new one and garbage collect the old one.
-          result = this.ma.chunkFactory.newChunk(result.getMemoryAddress(), chunkType);
+          result = this.ma.getChunkFactory().newChunk(result.getMemoryAddress(), chunkType);
         }
         result.readyForAllocation(chunkType);
         return result;
@@ -641,10 +645,11 @@ public class FreeListManager {
   private void free(long addr, boolean updateStats) {
     int cSize = Chunk.getSize(addr);
     if (updateStats) {
-      this.ma.stats.incObjects(-1);
+      OffHeapMemoryStats stats = this.ma.getStats();
+      stats.incObjects(-1);
       this.allocatedSize.addAndGet(-cSize);
-      this.ma.stats.incUsedMemory(-cSize);
-      this.ma.stats.incFreeMemory(cSize);
+      stats.incUsedMemory(-cSize);
+      stats.incFreeMemory(cSize);
       this.ma.notifyListeners();
     }
     if (cSize <= SimpleMemoryAllocatorImpl.MAX_TINY) {
@@ -671,7 +676,7 @@ public class FreeListManager {
 
   }
   private void freeHuge(long addr, int cSize) {
-    this.hugeChunkSet.add(this.ma.chunkFactory.newChunk(addr)); // TODO make this a collection of longs
+    this.hugeChunkSet.add(this.ma.getChunkFactory().newChunk(addr)); // TODO make this a collection of longs
   }
 
   List<MemoryBlock> getOrderedBlocks() {
