@@ -61,30 +61,6 @@ public class SimpleMemoryAllocatorImpl implements MemoryAllocator {
   
   public static final String FREE_OFF_HEAP_MEMORY_PROPERTY = "gemfire.free-off-heap-memory";
   
-  /**
-   * How many extra allocations to do for each actual slab allocation.
-   * Is this really a good idea?
-   */
-  public static final int BATCH_SIZE = Integer.getInteger("gemfire.OFF_HEAP_BATCH_ALLOCATION_SIZE", 1);
-  /**
-   * Every allocated chunk smaller than TINY_MULTIPLE*TINY_FREE_LIST_COUNT will allocate a chunk of memory that is a multiple of this value.
-   * Sizes are always rounded up to the next multiple of this constant
-   * so internal fragmentation will be limited to TINY_MULTIPLE-1 bytes per allocation
-   * and on average will be TINY_MULTIPLE/2 given a random distribution of size requests.
-   * This does not account for the additional internal fragmentation caused by the off-heap header
-   * which currently is always 8 bytes.
-   */
-  public final static int TINY_MULTIPLE = Integer.getInteger("gemfire.OFF_HEAP_ALIGNMENT", 8);
-  /**
-   * Number of free lists to keep for tiny allocations.
-   */
-  public final static int TINY_FREE_LIST_COUNT = Integer.getInteger("gemfire.OFF_HEAP_FREE_LIST_COUNT", 16384);
-  public final static int MAX_TINY = TINY_MULTIPLE*TINY_FREE_LIST_COUNT;
-  /**
-   * How many unused bytes are allowed in a huge memory allocation.
-   */
-  public final static int HUGE_MULTIPLE = 256;
-  
   private volatile OffHeapMemoryStats stats;
   
   private volatile OutOfOffHeapMemoryListener ooohml;
@@ -122,8 +98,7 @@ public class SimpleMemoryAllocatorImpl implements MemoryAllocator {
   public static MemoryAllocator create(OutOfOffHeapMemoryListener ooohml, OffHeapMemoryStats stats, LogWriter lw, 
       int slabCount, long offHeapMemorySize, long maxSlabSize) {
     return create(ooohml, stats, lw, slabCount, offHeapMemorySize, maxSlabSize,
-        null, TINY_MULTIPLE, BATCH_SIZE, TINY_FREE_LIST_COUNT, HUGE_MULTIPLE, 
-        new UnsafeMemoryChunk.Factory() {
+        null, new UnsafeMemoryChunk.Factory() {
       @Override
       public UnsafeMemoryChunk create(int size) {
         return new UnsafeMemoryChunk(size);
@@ -133,8 +108,7 @@ public class SimpleMemoryAllocatorImpl implements MemoryAllocator {
 
   private static SimpleMemoryAllocatorImpl create(OutOfOffHeapMemoryListener ooohml, OffHeapMemoryStats stats, LogWriter lw, 
       int slabCount, long offHeapMemorySize, long maxSlabSize, 
-      UnsafeMemoryChunk[] slabs, int tinyMultiple, int batchSize, int tinyFreeListCount, int hugeMultiple,
-      UnsafeMemoryChunk.Factory memChunkFactory) {
+      UnsafeMemoryChunk[] slabs, UnsafeMemoryChunk.Factory memChunkFactory) {
     SimpleMemoryAllocatorImpl result = singleton;
     boolean created = false;
     try {
@@ -179,7 +153,7 @@ public class SimpleMemoryAllocatorImpl implements MemoryAllocator {
         }
       }
 
-      result = new SimpleMemoryAllocatorImpl(ooohml, stats, slabs, tinyMultiple, batchSize, tinyFreeListCount, hugeMultiple);
+      result = new SimpleMemoryAllocatorImpl(ooohml, stats, slabs);
       singleton = result;
       LifecycleListener.invokeAfterCreate(result);
       created = true;
@@ -196,19 +170,12 @@ public class SimpleMemoryAllocatorImpl implements MemoryAllocator {
     }
     return result;
   }
-  // for unit tests
-  static SimpleMemoryAllocatorImpl create(OutOfOffHeapMemoryListener ooohml, OffHeapMemoryStats stats, LogWriter lw, 
+  static SimpleMemoryAllocatorImpl createForUnitTest(OutOfOffHeapMemoryListener ooohml, OffHeapMemoryStats stats, LogWriter lw, 
       int slabCount, long offHeapMemorySize, long maxSlabSize, UnsafeMemoryChunk.Factory memChunkFactory) {
     return create(ooohml, stats, lw, slabCount, offHeapMemorySize, maxSlabSize, 
-        null, TINY_MULTIPLE, BATCH_SIZE, TINY_FREE_LIST_COUNT, HUGE_MULTIPLE, memChunkFactory);
+        null, memChunkFactory);
   }
-  // for unit tests
-  public static SimpleMemoryAllocatorImpl create(OutOfOffHeapMemoryListener oooml, OffHeapMemoryStats stats, UnsafeMemoryChunk[] slabs) {
-    return create(oooml, stats, slabs, TINY_MULTIPLE, BATCH_SIZE, TINY_FREE_LIST_COUNT, HUGE_MULTIPLE);
-  }
-  // for unit tests
-  static SimpleMemoryAllocatorImpl create(OutOfOffHeapMemoryListener oooml, OffHeapMemoryStats stats, UnsafeMemoryChunk[] slabs,
-      int tinyMultiple, int batchSize, int tinyFreeListCount, int hugeMultiple) {
+  public static SimpleMemoryAllocatorImpl createForUnitTest(OutOfOffHeapMemoryListener oooml, OffHeapMemoryStats stats, UnsafeMemoryChunk[] slabs) {
     int slabCount = 0;
     long offHeapMemorySize = 0;
     long maxSlabSize = 0;
@@ -222,7 +189,7 @@ public class SimpleMemoryAllocatorImpl implements MemoryAllocator {
         }
       }
     }
-    return create(oooml, stats, null, slabCount, offHeapMemorySize, maxSlabSize, slabs, tinyMultiple, batchSize, tinyFreeListCount, hugeMultiple, null);
+    return create(oooml, stats, null, slabCount, offHeapMemorySize, maxSlabSize, slabs, null);
   }
   
   
@@ -255,27 +222,9 @@ public class SimpleMemoryAllocatorImpl implements MemoryAllocator {
     this.stats = newStats;
   }
 
-  private SimpleMemoryAllocatorImpl(final OutOfOffHeapMemoryListener oooml, final OffHeapMemoryStats stats, final UnsafeMemoryChunk[] slabs,
-      int tinyMultiple, int batchSize, int tinyFreeListCount, int hugeMultiple) {
+  private SimpleMemoryAllocatorImpl(final OutOfOffHeapMemoryListener oooml, final OffHeapMemoryStats stats, final UnsafeMemoryChunk[] slabs) {
     if (oooml == null) {
       throw new IllegalArgumentException("OutOfOffHeapMemoryListener is null");
-    }
-    if (tinyMultiple <= 0 || (tinyMultiple & 3) != 0) {
-      throw new IllegalStateException("gemfire.OFF_HEAP_ALIGNMENT must be a multiple of 8.");
-    }
-    if (tinyMultiple > 256) {
-      // this restriction exists because of the dataSize field in the object header.
-      throw new IllegalStateException("gemfire.OFF_HEAP_ALIGNMENT must be <= 256 and a multiple of 8.");
-    }
-    if (batchSize <= 0) {
-      throw new IllegalStateException("gemfire.OFF_HEAP_BATCH_ALLOCATION_SIZE must be >= 1.");
-    }
-    if (tinyFreeListCount <= 0) {
-      throw new IllegalStateException("gemfire.OFF_HEAP_FREE_LIST_COUNT must be >= 1.");
-    }
-    if (hugeMultiple > 256 || hugeMultiple < 0) {
-      // this restriction exists because of the dataSize field in the object header.
-      throw new IllegalStateException("HUGE_MULTIPLE must be >= 0 and <= 256 but it was " + hugeMultiple);
     }
     
     this.ooohml = oooml;

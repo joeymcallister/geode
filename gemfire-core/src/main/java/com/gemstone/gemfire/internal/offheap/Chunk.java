@@ -572,12 +572,12 @@ import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
      * @throws IllegalStateException when the pattern has been violated.
      */
     public void validateFill() {
-      assert SimpleMemoryAllocatorImpl.TINY_MULTIPLE == 8;
+      assert FreeListManager.TINY_MULTIPLE == 8;
       
       long startAddress = getMemoryAddress() + MIN_CHUNK_SIZE;
       int size = getSize() - MIN_CHUNK_SIZE;
       
-      for(int i = 0;i < size;i += SimpleMemoryAllocatorImpl.TINY_MULTIPLE) {
+      for(int i = 0;i < size;i += FreeListManager.TINY_MULTIPLE) {
         if(UnsafeMemoryChunk.readAbsoluteLong(startAddress + i) != FILL_PATTERN) {
           throw new IllegalStateException("Fill pattern violated for chunk " + getMemoryAddress() + " with size " + getSize());
         }        

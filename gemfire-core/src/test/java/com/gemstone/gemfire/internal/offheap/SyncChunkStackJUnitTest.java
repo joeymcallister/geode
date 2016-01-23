@@ -106,7 +106,7 @@ public class SyncChunkStackJUnitTest {
   public void stackCreatedWithAddressIsNotEmpty() {
     UnsafeMemoryChunk slab = new UnsafeMemoryChunk(1024);
     try {
-      SimpleMemoryAllocatorImpl ma = SimpleMemoryAllocatorImpl.create(new NullOutOfOffHeapMemoryListener(), new NullOffHeapMemoryStats(), new UnsafeMemoryChunk[]{slab});
+      SimpleMemoryAllocatorImpl ma = SimpleMemoryAllocatorImpl.createForUnitTest(new NullOutOfOffHeapMemoryListener(), new NullOffHeapMemoryStats(), new UnsafeMemoryChunk[]{slab});
       Chunk chunk = (Chunk) ma.allocate(100, null);
 
       SyncChunkStack stack = new SyncChunkStack(chunk.getMemoryAddress());
@@ -120,7 +120,7 @@ public class SyncChunkStackJUnitTest {
   public void stackWithChunkIsNotEmpty() {
     UnsafeMemoryChunk slab = new UnsafeMemoryChunk(1024);
     try {
-      SimpleMemoryAllocatorImpl ma = SimpleMemoryAllocatorImpl.create(new NullOutOfOffHeapMemoryListener(), new NullOffHeapMemoryStats(), new UnsafeMemoryChunk[]{slab});
+      SimpleMemoryAllocatorImpl ma = SimpleMemoryAllocatorImpl.createForUnitTest(new NullOutOfOffHeapMemoryListener(), new NullOffHeapMemoryStats(), new UnsafeMemoryChunk[]{slab});
       Chunk chunk = (Chunk) ma.allocate(100, null);
 
       SyncChunkStack stack = new SyncChunkStack();
@@ -135,7 +135,7 @@ public class SyncChunkStackJUnitTest {
   public void stackWithChunkTopEqualsAddress() {
     UnsafeMemoryChunk slab = new UnsafeMemoryChunk(1024);
     try {
-      SimpleMemoryAllocatorImpl ma = SimpleMemoryAllocatorImpl.create(new NullOutOfOffHeapMemoryListener(), new NullOffHeapMemoryStats(), new UnsafeMemoryChunk[]{slab});
+      SimpleMemoryAllocatorImpl ma = SimpleMemoryAllocatorImpl.createForUnitTest(new NullOutOfOffHeapMemoryListener(), new NullOffHeapMemoryStats(), new UnsafeMemoryChunk[]{slab});
       Chunk chunk = (Chunk) ma.allocate(100, null);
 
       long addr = chunk.getMemoryAddress();
@@ -162,7 +162,7 @@ public class SyncChunkStackJUnitTest {
   public void stackWithChunkClearReturnsAddressAndEmptiesStack() {
     UnsafeMemoryChunk slab = new UnsafeMemoryChunk(1024);
     try {
-      SimpleMemoryAllocatorImpl ma = SimpleMemoryAllocatorImpl.create(new NullOutOfOffHeapMemoryListener(), new NullOffHeapMemoryStats(), new UnsafeMemoryChunk[]{slab});
+      SimpleMemoryAllocatorImpl ma = SimpleMemoryAllocatorImpl.createForUnitTest(new NullOutOfOffHeapMemoryListener(), new NullOffHeapMemoryStats(), new UnsafeMemoryChunk[]{slab});
       Chunk chunk = (Chunk) ma.allocate(100, null);
 
       long addr = chunk.getMemoryAddress();
@@ -180,7 +180,7 @@ public class SyncChunkStackJUnitTest {
   public void stackWithChunkPollReturnsAddressAndEmptiesStack() {
     UnsafeMemoryChunk slab = new UnsafeMemoryChunk(1024);
     try {
-      SimpleMemoryAllocatorImpl ma = SimpleMemoryAllocatorImpl.create(new NullOutOfOffHeapMemoryListener(), new NullOffHeapMemoryStats(), new UnsafeMemoryChunk[]{slab});
+      SimpleMemoryAllocatorImpl ma = SimpleMemoryAllocatorImpl.createForUnitTest(new NullOutOfOffHeapMemoryListener(), new NullOffHeapMemoryStats(), new UnsafeMemoryChunk[]{slab});
       Chunk chunk = (Chunk) ma.allocate(100, null);
 
       long addr = chunk.getMemoryAddress();
@@ -198,7 +198,7 @@ public class SyncChunkStackJUnitTest {
   public void stackWithChunkTotalSizeIsChunkSize() {
     UnsafeMemoryChunk slab = new UnsafeMemoryChunk(1024);
     try {
-      SimpleMemoryAllocatorImpl ma = SimpleMemoryAllocatorImpl.create(new NullOutOfOffHeapMemoryListener(), new NullOffHeapMemoryStats(), new UnsafeMemoryChunk[]{slab});
+      SimpleMemoryAllocatorImpl ma = SimpleMemoryAllocatorImpl.createForUnitTest(new NullOutOfOffHeapMemoryListener(), new NullOffHeapMemoryStats(), new UnsafeMemoryChunk[]{slab});
       Chunk chunk = (Chunk) ma.allocate(100, null);
       int chunkSize = chunk.getSize();
 
@@ -216,7 +216,7 @@ public class SyncChunkStackJUnitTest {
   public void stackWithChunkLogShowsMsgAndSize() {
     UnsafeMemoryChunk slab = new UnsafeMemoryChunk(1024);
     try {
-      SimpleMemoryAllocatorImpl ma = SimpleMemoryAllocatorImpl.create(new NullOutOfOffHeapMemoryListener(), new NullOffHeapMemoryStats(), new UnsafeMemoryChunk[]{slab});
+      SimpleMemoryAllocatorImpl ma = SimpleMemoryAllocatorImpl.createForUnitTest(new NullOutOfOffHeapMemoryListener(), new NullOffHeapMemoryStats(), new UnsafeMemoryChunk[]{slab});
       Chunk chunk = (Chunk) ma.allocate(100, null);
       int chunkSize = chunk.getSize();
 
@@ -252,7 +252,7 @@ public class SyncChunkStackJUnitTest {
   public void stackWithChunkTotalSizeIsChunkSizeWithConcurrentMod() {
     UnsafeMemoryChunk slab = new UnsafeMemoryChunk(1024);
     try {
-      SimpleMemoryAllocatorImpl ma = SimpleMemoryAllocatorImpl.create(new NullOutOfOffHeapMemoryListener(), new NullOffHeapMemoryStats(), new UnsafeMemoryChunk[]{slab});
+      SimpleMemoryAllocatorImpl ma = SimpleMemoryAllocatorImpl.createForUnitTest(new NullOutOfOffHeapMemoryListener(), new NullOffHeapMemoryStats(), new UnsafeMemoryChunk[]{slab});
       Chunk chunk = (Chunk) ma.allocate(100, null);
       int chunkSize = chunk.getSize();
 
@@ -271,7 +271,7 @@ public class SyncChunkStackJUnitTest {
   public void stackWithChunkLogShowsMsgAndSizeWithConcurrentMod() {
     UnsafeMemoryChunk slab = new UnsafeMemoryChunk(1024);
     try {
-      SimpleMemoryAllocatorImpl ma = SimpleMemoryAllocatorImpl.create(new NullOutOfOffHeapMemoryListener(), new NullOffHeapMemoryStats(), new UnsafeMemoryChunk[]{slab});
+      SimpleMemoryAllocatorImpl ma = SimpleMemoryAllocatorImpl.createForUnitTest(new NullOutOfOffHeapMemoryListener(), new NullOffHeapMemoryStats(), new UnsafeMemoryChunk[]{slab});
       Chunk chunk = (Chunk) ma.allocate(100, null);
       int chunkSize = chunk.getSize();
 

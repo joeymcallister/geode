@@ -32,19 +32,18 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.OutOfOffHeapMemoryException;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
-import com.gemstone.gemfire.internal.offheap.MemoryBlock.State;
 
 /**
  * Manages the free lists for a SimpleMemoryAllocatorImpl
  */
 public class FreeListManager {
-  final private AtomicReferenceArray<SyncChunkStack> tinyFreeLists = new AtomicReferenceArray<SyncChunkStack>(SimpleMemoryAllocatorImpl.TINY_FREE_LIST_COUNT);
+  final private AtomicReferenceArray<SyncChunkStack> tinyFreeLists = new AtomicReferenceArray<SyncChunkStack>(TINY_FREE_LIST_COUNT);
   // hugeChunkSet is sorted by chunk size in ascending order. It will only contain chunks larger than MAX_TINY.
   private final ConcurrentSkipListSet<Chunk> hugeChunkSet = new ConcurrentSkipListSet<Chunk>();
   private final AtomicLong allocatedSize = new AtomicLong(0L);
 
   private int getNearestTinyMultiple(int size) {
-    return (size-1)/SimpleMemoryAllocatorImpl.TINY_MULTIPLE;
+    return (size-1)/TINY_MULTIPLE;
   }
   List<Chunk> getLiveChunks() {
     ArrayList<Chunk> result = new ArrayList<Chunk>();
@@ -193,7 +192,7 @@ public class FreeListManager {
       // been adjusted.
       size += Chunk.OFF_HEAP_HEADER_SIZE;
     }
-    if (size <= SimpleMemoryAllocatorImpl.MAX_TINY) {
+    if (size <= MAX_TINY) {
       return allocateTiny(size, useSlabs, chunkType);
     } else {
       return allocateHuge(size, useSlabs, chunkType);
@@ -260,6 +259,41 @@ public class FreeListManager {
   }
 
   private final AtomicInteger compactCount = new AtomicInteger();
+  /**
+   * How many extra allocations to do for each actual slab allocation.
+   * Is this really a good idea?
+   */
+  public static final int BATCH_SIZE = Integer.getInteger("gemfire.OFF_HEAP_BATCH_ALLOCATION_SIZE", 1);
+  static {
+    verifyOffHeapBatchAllocationSize(BATCH_SIZE);
+  }
+  /**
+   * Every allocated chunk smaller than TINY_MULTIPLE*TINY_FREE_LIST_COUNT will allocate a chunk of memory that is a multiple of this value.
+   * Sizes are always rounded up to the next multiple of this constant
+   * so internal fragmentation will be limited to TINY_MULTIPLE-1 bytes per allocation
+   * and on average will be TINY_MULTIPLE/2 given a random distribution of size requests.
+   * This does not account for the additional internal fragmentation caused by the off-heap header
+   * which currently is always 8 bytes.
+   */
+  public final static int TINY_MULTIPLE = Integer.getInteger("gemfire.OFF_HEAP_ALIGNMENT", 8);
+  static {
+    verifyOffHeapAlignment(TINY_MULTIPLE);
+  }
+  /**
+   * Number of free lists to keep for tiny allocations.
+   */
+  public final static int TINY_FREE_LIST_COUNT = Integer.getInteger("gemfire.OFF_HEAP_FREE_LIST_COUNT", 16384);
+  static {
+    verifyOffHeapFreeListCount(TINY_FREE_LIST_COUNT);
+  }
+  /**
+   * How many unused bytes are allowed in a huge memory allocation.
+   */
+  public final static int HUGE_MULTIPLE = 256;
+  static {
+    verifyHugeMultiple(HUGE_MULTIPLE);
+  }
+  public final static int MAX_TINY = TINY_MULTIPLE*TINY_FREE_LIST_COUNT;
   /**
    * Compacts memory and returns true if enough memory to allocate chunkSize
    * is freed. Otherwise returns false;
@@ -411,6 +445,32 @@ public class FreeListManager {
     }
   }
 
+  static void verifyOffHeapBatchAllocationSize(int batchSize) {
+    if (batchSize <= 0) {
+      throw new IllegalStateException("gemfire.OFF_HEAP_BATCH_ALLOCATION_SIZE must be >= 1.");
+    }
+  }
+  static void verifyOffHeapAlignment(int tinyMultiple) {
+    if (tinyMultiple <= 0 || (tinyMultiple & 3) != 0) {
+      throw new IllegalStateException("gemfire.OFF_HEAP_ALIGNMENT must be a multiple of 8.");
+    }
+    if (tinyMultiple > 256) {
+      // this restriction exists because of the dataSize field in the object header.
+      throw new IllegalStateException("gemfire.OFF_HEAP_ALIGNMENT must be <= 256 and a multiple of 8.");
+    }
+  }
+  static void verifyOffHeapFreeListCount(int tinyFreeListCount) {
+    if (tinyFreeListCount <= 0) {
+      throw new IllegalStateException("gemfire.OFF_HEAP_FREE_LIST_COUNT must be >= 1.");
+    }
+  }
+  static void verifyHugeMultiple(int hugeMultiple) {
+    if (hugeMultiple > 256 || hugeMultiple < 0) {
+      // this restriction exists because of the dataSize field in the object header.
+      throw new IllegalStateException("HUGE_MULTIPLE must be >= 0 and <= 256 but it was " + hugeMultiple);
+    }
+  }
+  
   private void updateFragmentation() {      
     long freeSize = this.ma.getStats().getFreeMemory();
 
@@ -509,7 +569,7 @@ public class FreeListManager {
       if (fragmentFreeSize >= chunkSize) {
         // this fragment has room
         // Try to allocate up to BATCH_SIZE more chunks from it
-        int allocSize = chunkSize * SimpleMemoryAllocatorImpl.BATCH_SIZE;
+        int allocSize = chunkSize * BATCH_SIZE;
         if (allocSize > fragmentFreeSize) {
           allocSize = (fragmentFreeSize / chunkSize) * chunkSize;
         }
@@ -563,7 +623,7 @@ public class FreeListManager {
     return (int) ((((long)value + (multiple-1)) / multiple) * multiple);
   }
   private Chunk allocateTiny(int size, boolean useFragments, ChunkType chunkType) {
-    return basicAllocate(getNearestTinyMultiple(size), SimpleMemoryAllocatorImpl.TINY_MULTIPLE, 0, this.tinyFreeLists, useFragments, chunkType);
+    return basicAllocate(getNearestTinyMultiple(size), TINY_MULTIPLE, 0, this.tinyFreeLists, useFragments, chunkType);
   }
   private Chunk basicAllocate(int idx, int multiple, int offset, AtomicReferenceArray<SyncChunkStack> freeLists, boolean useFragments, ChunkType chunkType) {
     SyncChunkStack clq = freeLists.get(idx);
@@ -593,7 +653,7 @@ public class FreeListManager {
     NavigableSet<Chunk> ts = this.hugeChunkSet.tailSet(sizeHolder);
     Chunk result = ts.pollFirst();
     if (result != null) {
-      if (result.getSize() - (SimpleMemoryAllocatorImpl.HUGE_MULTIPLE - Chunk.OFF_HEAP_HEADER_SIZE) < size) {
+      if (result.getSize() - (HUGE_MULTIPLE - Chunk.OFF_HEAP_HEADER_SIZE) < size) {
         // close enough to the requested size; just return it.
 
         // Data integrity check.
@@ -614,7 +674,7 @@ public class FreeListManager {
     if (useFragments) {
       // We round it up to the next multiple of TINY_MULTIPLE to make
       // sure we always have chunks allocated on an 8 byte boundary.
-      return allocateFromFragments(round(SimpleMemoryAllocatorImpl.TINY_MULTIPLE, size), chunkType);
+      return allocateFromFragments(round(TINY_MULTIPLE, size), chunkType);
     } else {
       return null;
     }
@@ -652,7 +712,7 @@ public class FreeListManager {
       stats.incFreeMemory(cSize);
       this.ma.notifyListeners();
     }
-    if (cSize <= SimpleMemoryAllocatorImpl.MAX_TINY) {
+    if (cSize <= MAX_TINY) {
       freeTiny(addr, cSize);
     } else {
       freeHuge(addr, cSize);

@@ -79,4 +79,94 @@ public class FreeListManagerTest {
   public void allocateNegativeThrowsAssertion() {
     this.freeListManager.allocate(-123, null);
   }
+  
+  @Test
+  public void hugeMultipleLessThanZeroIsIllegal() {
+    try {
+      FreeListManager.verifyHugeMultiple(-1);
+      fail("expected IllegalStateException");
+    } catch (IllegalStateException expected) {
+      assertEquals(true, expected.getMessage().contains("HUGE_MULTIPLE must be >= 0 and <= " + FreeListManager.HUGE_MULTIPLE + " but it was -1"));
+    }
+  }
+  @Test
+  public void hugeMultipleGreaterThan256IsIllegal() {
+    try {
+      FreeListManager.verifyHugeMultiple(257);
+      fail("expected IllegalStateException");
+    } catch (IllegalStateException expected) {
+      assertEquals(true, expected.getMessage().contains("HUGE_MULTIPLE must be >= 0 and <= 256 but it was 257"));
+    }
+  }
+  @Test
+  public void hugeMultipleof256IsLegal() {
+    FreeListManager.verifyHugeMultiple(256);
+  }
+  
+  @Test
+  public void offHeapFreeListCountLessThanZeroIsIllegal() {
+    try {
+      FreeListManager.verifyOffHeapFreeListCount(-1);
+      fail("expected IllegalStateException");
+    } catch (IllegalStateException expected) {
+      assertEquals(true, expected.getMessage().contains("gemfire.OFF_HEAP_FREE_LIST_COUNT must be >= 1."));
+    }
+  }
+  @Test
+  public void offHeapFreeListCountOfZeroIsIllegal() {
+    try {
+      FreeListManager.verifyOffHeapFreeListCount(0);
+      fail("expected IllegalStateException");
+    } catch (IllegalStateException expected) {
+      assertEquals(true, expected.getMessage().contains("gemfire.OFF_HEAP_FREE_LIST_COUNT must be >= 1."));
+    }
+  }
+  @Test
+  public void offHeapFreeListCountOfOneIsLegal() {
+    FreeListManager.verifyOffHeapFreeListCount(1);
+  }
+  @Test
+  public void offHeapAlignmentLessThanZeroIsIllegal() {
+    try {
+      FreeListManager.verifyOffHeapAlignment(-1);
+      fail("expected IllegalStateException");
+    } catch (IllegalStateException expected) {
+      assertEquals(true, expected.getMessage().contains("gemfire.OFF_HEAP_ALIGNMENT must be a multiple of 8"));
+    }
+  }
+  @Test
+  public void offHeapAlignmentNotAMultipleOf8IsIllegal() {
+    try {
+      FreeListManager.verifyOffHeapAlignment(9);
+      fail("expected IllegalStateException");
+    } catch (IllegalStateException expected) {
+      assertEquals(true, expected.getMessage().contains("gemfire.OFF_HEAP_ALIGNMENT must be a multiple of 8"));
+    }
+  }
+  @Test
+  public void offHeapAlignmentGreaterThan256IsIllegal() {
+    try {
+      FreeListManager.verifyOffHeapAlignment(256+8);
+      fail("expected IllegalStateException");
+    } catch (IllegalStateException expected) {
+      assertEquals(true, expected.getMessage().contains("gemfire.OFF_HEAP_ALIGNMENT must be <= 256"));
+    }
+  }
+  @Test
+  public void offHeapAlignmentOf256IsLegal() {
+    FreeListManager.verifyOffHeapAlignment(256);
+  }
+  @Test
+  public void offHeapBatchAllocationSizeOfZeroIsIllegal() {
+    try {
+      FreeListManager.verifyOffHeapBatchAllocationSize(0);
+      fail("expected IllegalStateException");
+    } catch (IllegalStateException expected) {
+      assertEquals(true, expected.getMessage().contains("gemfire.OFF_HEAP_BATCH_ALLOCATION_SIZE must be >= 1."));
+    }
+  }
+  @Test
+  public void offHeapBatchAllocationSizeOfOneIsLegal() {
+    FreeListManager.verifyOffHeapBatchAllocationSize(1);
+  }
 }
