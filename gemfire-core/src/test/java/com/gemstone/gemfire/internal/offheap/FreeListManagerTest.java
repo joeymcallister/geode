@@ -212,17 +212,4 @@ public class FreeListManagerTest {
   public void offHeapAlignmentOf256IsLegal() {
     FreeListManager.verifyOffHeapAlignment(256);
   }
-  @Test
-  public void offHeapBatchAllocationSizeOfZeroIsIllegal() {
-    try {
-      FreeListManager.verifyOffHeapBatchAllocationSize(0);
-      fail("expected IllegalStateException");
-    } catch (IllegalStateException expected) {
-      assertEquals(true, expected.getMessage().contains("gemfire.OFF_HEAP_BATCH_ALLOCATION_SIZE must be >= 1."));
-    }
-  }
-  @Test
-  public void offHeapBatchAllocationSizeOfOneIsLegal() {
-    FreeListManager.verifyOffHeapBatchAllocationSize(1);
-  }
 }

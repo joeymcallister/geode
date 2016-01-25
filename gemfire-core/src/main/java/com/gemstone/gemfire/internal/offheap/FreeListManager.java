@@ -131,15 +131,17 @@ public class FreeListManager {
     }
     this.fragmentList = new CopyOnWriteArrayList<Fragment>(tmp);
 
-    if(this.validateMemoryWithFill) {
-      fillFragments();
-    }
+    fillFragments();
   }
 
   /**
-   * Fills all fragments with a fill used for data integrity validation.
+   * Fills all fragments with a fill used for data integrity validation 
+   * if fill validation is enabled.
    */
   private void fillFragments() {
+    if (!this.validateMemoryWithFill) {
+      return;
+    }
     for(Fragment fragment : this.fragmentList) {
       fragment.fill();
     }
@@ -162,12 +164,11 @@ public class FreeListManager {
    */
   @SuppressWarnings("synthetic-access")
   public Chunk allocate(int size) {
-    Chunk result = null;
-    {
-      assert size > 0;
-      result = basicAllocate(size, true);
-      result.setDataSize(size);
-    }
+    assert size > 0;
+    
+    Chunk result = basicAllocate(size, true);
+
+    result.setDataSize(size);
     OffHeapMemoryStats stats = this.ma.getStats();
     stats.incObjects(1);
     int resultSize = result.getSize();
@@ -260,14 +261,6 @@ public class FreeListManager {
    * performance so turn on only when necessary.
    */
   final boolean validateMemoryWithFill = Boolean.getBoolean("gemfire.validateOffHeapWithFill");
-  /**
-   * How many extra allocations to do for each actual slab allocation.
-   * Is this really a good idea?
-   */
-  public static final int BATCH_SIZE = Integer.getInteger("gemfire.OFF_HEAP_BATCH_ALLOCATION_SIZE", 1);
-  static {
-    verifyOffHeapBatchAllocationSize(BATCH_SIZE);
-  }
   /**
    * Every allocated chunk smaller than TINY_MULTIPLE*TINY_FREE_LIST_COUNT will allocate a chunk of memory that is a multiple of this value.
    * Sizes are always rounded up to the next multiple of this constant
@@ -427,10 +420,7 @@ public class FreeListManager {
         }
         this.fragmentList.addAll(tmp);
 
-        // Reinitialize fragments with fill pattern data
-        if(this.validateMemoryWithFill) {
-          fillFragments();
-        }
+        fillFragments();
 
         // Signal any waiters that a compaction happened.
         this.compactCount.incrementAndGet();
@@ -446,11 +436,6 @@ public class FreeListManager {
     }
   }
 
-  static void verifyOffHeapBatchAllocationSize(int batchSize) {
-    if (batchSize <= 0) {
-      throw new IllegalStateException("gemfire.OFF_HEAP_BATCH_ALLOCATION_SIZE must be >= 1.");
-    }
-  }
   static void verifyOffHeapAlignment(int tinyMultiple) {
     if (tinyMultiple <= 0 || (tinyMultiple & 3) != 0) {
       throw new IllegalStateException("gemfire.OFF_HEAP_ALIGNMENT must be a multiple of 8.");
@@ -569,12 +554,7 @@ public class FreeListManager {
       int fragmentFreeSize = fragmentSize - oldOffset;
       if (fragmentFreeSize >= chunkSize) {
         // this fragment has room
-        // Try to allocate up to BATCH_SIZE more chunks from it
-        int allocSize = chunkSize * BATCH_SIZE;
-        if (allocSize > fragmentFreeSize) {
-          allocSize = (fragmentFreeSize / chunkSize) * chunkSize;
-        }
-        int newOffset = oldOffset + allocSize;
+        int newOffset = oldOffset + chunkSize;
         int extraSize = fragmentSize - newOffset;
         if (extraSize < Chunk.MIN_CHUNK_SIZE) {
           // include these last few bytes of the fragment in the allocation.
@@ -589,16 +569,6 @@ public class FreeListManager {
           this.lastFragmentAllocation.set(fragIdx);
           ChunkFactory cf = this.ma.getChunkFactory();
           Chunk result = cf.newChunk(fragment.getMemoryAddress()+oldOffset, chunkSize+extraSize);
-          allocSize -= chunkSize+extraSize;
-          oldOffset += extraSize;
-          while (allocSize > 0) {
-            oldOffset += chunkSize;
-            // we add the batch ones immediately to the freelist
-            result.readyForFree();
-            free(result.getMemoryAddress(), false);
-            result = cf.newChunk(fragment.getMemoryAddress()+oldOffset, chunkSize);
-            allocSize -= chunkSize;
-          }
 
           if(this.validateMemoryWithFill) {
             result.validateFill();
@@ -606,9 +576,6 @@ public class FreeListManager {
 
           return result;
         } else {
-          // TODO OFFHEAP: if batch allocations are disabled should we not call basicAllocate here?
-          // Since we know another thread did a concurrent alloc
-          // that possibly did a batch check the free list again.
           Chunk result = basicAllocate(chunkSize, false);
           if (result != null) {
             return result;
