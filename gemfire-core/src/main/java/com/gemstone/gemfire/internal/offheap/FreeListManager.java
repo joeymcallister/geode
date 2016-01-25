@@ -55,7 +55,6 @@ public class FreeListManager {
   }
   private void getLiveChunks(UnsafeMemoryChunk slab, List<Chunk> result) {
     long addr = slab.getMemoryAddress();
-    ChunkFactory cf = this.ma.getChunkFactory();
     while (addr <= (slab.getMemoryAddress() + slab.getSize() - Chunk.MIN_CHUNK_SIZE)) {
       Fragment f = isAddrInFragmentFreeSpace(addr);
       if (f != null) {
@@ -64,7 +63,7 @@ public class FreeListManager {
         int curChunkSize = Chunk.getSize(addr);
         int refCount = Chunk.getRefCount(addr);
         if (refCount > 0) {
-          result.add(cf.newChunk(addr));
+          result.add(new GemFireChunk(addr));
         }
         addr += curChunkSize;
       }
@@ -567,8 +566,7 @@ public class FreeListManager {
         if (fragment.allocate(oldOffset, newOffset)) {
           // We did the allocate!
           this.lastFragmentAllocation.set(fragIdx);
-          ChunkFactory cf = this.ma.getChunkFactory();
-          Chunk result = cf.newChunk(fragment.getMemoryAddress()+oldOffset, chunkSize+extraSize);
+          Chunk result = new GemFireChunk(fragment.getMemoryAddress()+oldOffset, chunkSize+extraSize);
 
           if(this.validateMemoryWithFill) {
             result.validateFill();
@@ -598,7 +596,7 @@ public class FreeListManager {
     if (clq != null) {
       long memAddr = clq.poll();
       if (memAddr != 0) {
-        Chunk result = this.ma.getChunkFactory().newChunk(memAddr);
+        Chunk result = new GemFireChunk(memAddr);
 
         // Data integrity check.
         if(this.validateMemoryWithFill) {          
@@ -703,7 +701,7 @@ public class FreeListManager {
 
   }
   private void freeHuge(long addr, int cSize) {
-    this.hugeChunkSet.add(this.ma.getChunkFactory().newChunk(addr)); // TODO make this a collection of longs
+    this.hugeChunkSet.add(new GemFireChunk(addr)); // TODO make this a collection of longs
   }
 
   List<MemoryBlock> getOrderedBlocks() {

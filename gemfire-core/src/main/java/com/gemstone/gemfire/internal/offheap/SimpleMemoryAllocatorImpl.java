@@ -83,7 +83,6 @@ public class SimpleMemoryAllocatorImpl implements MemoryAllocator {
   private volatile MemoryUsageListener[] memoryUsageListeners = new MemoryUsageListener[0];
   
   private static SimpleMemoryAllocatorImpl singleton = null;
-  private final ChunkFactory chunkFactory;
   
   public static SimpleMemoryAllocatorImpl getAllocator() {
     SimpleMemoryAllocatorImpl result = singleton;
@@ -230,8 +229,7 @@ public class SimpleMemoryAllocatorImpl implements MemoryAllocator {
     this.ooohml = oooml;
     this.stats = stats;
     this.slabs = slabs;
-    this.chunkFactory = new GemFireChunkFactory();
-    
+
     //OSProcess.printStacks(0, InternalDistributedSystem.getAnyInstance().getLogWriter(), false);
     this.stats.setFragments(slabs.length);
     largestSlab = slabs[0].getSize();
@@ -447,10 +445,6 @@ public class SimpleMemoryAllocatorImpl implements MemoryAllocator {
     return this.stats;
   }
   
-  public ChunkFactory getChunkFactory() {
-    return this.chunkFactory;
-  }
-
   @Override
   public void addMemoryUsageListener(final MemoryUsageListener listener) {
     synchronized (this.memoryUsageListeners) {

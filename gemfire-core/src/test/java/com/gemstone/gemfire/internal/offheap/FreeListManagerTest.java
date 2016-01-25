@@ -18,7 +18,6 @@ public class FreeListManagerTest {
   private final SimpleMemoryAllocatorImpl ma = mock(SimpleMemoryAllocatorImpl.class);
   private final UnsafeMemoryChunk slab = new UnsafeMemoryChunk(1024*1024*5);
   private final OffHeapMemoryStats stats = mock(OffHeapMemoryStats.class);
-  private final ChunkFactory cf = new GemFireChunkFactory();
   private FreeListManager freeListManager;
   
 
@@ -35,7 +34,6 @@ public class FreeListManagerTest {
     when(ma.getSlabs()).thenReturn(new UnsafeMemoryChunk[] {slab});
     when(ma.getTotalMemory()).thenReturn((long) slab.getSize());
     when(ma.getStats()).thenReturn(stats);
-    when(ma.getChunkFactory()).thenReturn(cf);
     
     this.freeListManager = new FreeListManager(ma);
   }

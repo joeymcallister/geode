@@ -49,17 +49,6 @@ public class OffHeapRegionEntryHelper {
   private static final long NOT_AVAILABLE_ADDRESS = 7L<<1;
   private static final long TOMBSTONE_ADDRESS = 8L<<1;
   public static final int MAX_LENGTH_FOR_DATA_AS_ADDRESS = 8;
- /* private static final ChunkFactory chunkFactory ;
-  static {
-    ChunkFactory factory;
-    try {
-       factory= SimpleMemoryAllocatorImpl.getAllocator().getChunkFactory();
-         
-    }catch(CacheClosedException ce) {
-      factory = null;
-    }
-    chunkFactory = factory;
-  }*/
   
   private static final Token[] addrToObj = new Token[]{
     null,
@@ -107,8 +96,7 @@ public class OffHeapRegionEntryHelper {
   @Unretained @Retained
   public static Object addressToObject(@Released @Retained long ohAddress, boolean decompress, RegionEntryContext context) {
     if (isOffHeap(ohAddress)) {
-      //Chunk chunk = chunkFactory.newChunk(ohAddress);
-      @Unretained Chunk chunk =  SimpleMemoryAllocatorImpl.getAllocator().getChunkFactory().newChunk(ohAddress);
+      @Unretained Chunk chunk =  new GemFireChunk(ohAddress);
       @Unretained Object result = chunk;
       if (decompress && chunk.isCompressed()) {
         try {
