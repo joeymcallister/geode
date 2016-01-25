@@ -424,8 +424,8 @@ public class SimpleMemoryAllocatorImpl implements MemoryAllocator {
     }
   }
   
-  void freeChunk(long addr) {
-    this.freeList.free(addr);
+  FreeListManager getFreeListManager() {
+    return this.freeList;
   }
   
   protected UnsafeMemoryChunk[] getSlabs() {

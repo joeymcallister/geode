@@ -175,7 +175,7 @@ public class OffHeapRegionEntryHelper {
 
   private static void releaseAddress(@Released long ohAddress) {
     if (isOffHeap(ohAddress)) {
-      Chunk.release(ohAddress, true);
+      Chunk.release(ohAddress);
     }
   }
   
@@ -382,7 +382,7 @@ public class OffHeapRegionEntryHelper {
         @Unretained long addr2 = re.getAddress();
         if (addr != addr2) {
           retryCount = 0;
-          Chunk.release(addr, true);
+          Chunk.release(addr);
           // spin around and try again.
           addr = addr2;
         } else {

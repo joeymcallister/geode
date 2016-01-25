@@ -64,13 +64,12 @@ public class FreeListManagerTest {
     assertEquals(computeExpectedSize(tinySize), c.getSize());
   }
 
-  @Ignore
   @Test
   public void allocateTinyChunkFromFreeListHasCorrectSize() {
     int tinySize = 10;
     Chunk c = this.freeListManager.allocate(tinySize, null);
     assertNotNull(c);
-    this.freeListManager.free(c.getMemoryAddress()); // TODO can't call free here
+    Chunk.release(c.getMemoryAddress(), this.freeListManager);
     c = this.freeListManager.allocate(tinySize, null);
     assertEquals(tinySize, c.getDataSize());
     assertEquals(computeExpectedSize(tinySize), c.getSize());
@@ -83,6 +82,17 @@ public class FreeListManagerTest {
     assertNotNull(c);
     assertEquals(hugeSize, c.getDataSize());
     assertEquals(computeExpectedSize(hugeSize), c.getSize());
+  }
+  
+  @Test
+  public void allocateHugeChunkFromFreeListHasCorrectSize() {
+    int dataSize = FreeListManager.MAX_TINY+1;
+    Chunk c = this.freeListManager.allocate(dataSize, null);
+    assertNotNull(c);
+    Chunk.release(c.getMemoryAddress(), this.freeListManager);
+    c = this.freeListManager.allocate(dataSize, null);
+    assertEquals(dataSize, c.getDataSize());
+    assertEquals(computeExpectedSize(dataSize), c.getSize());
   }
   
   private int computeExpectedSize(int dataSize) {

@@ -394,7 +394,7 @@ import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
     
     @Override
     public void release() {
-      release(this.memoryAddress, true);
+      release(this.memoryAddress);
      }
 
     @Override
@@ -676,7 +676,10 @@ import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 
       return true;
     }
-    public static void release(final long memAddr, boolean issueOnReturnCallback) {
+    public static void release(final long memAddr) {
+      release(memAddr, null);
+    }
+    static void release(final long memAddr, FreeListManager freeListManager) {
       SimpleMemoryAllocatorImpl.validateAddress(memAddr);
       int newCount;
       int rawBits;
@@ -703,38 +706,21 @@ import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
       } while (!UnsafeMemoryChunk.writeAbsoluteIntVolatile(memAddr+REF_COUNT_OFFSET, rawBits, newCount));
       //debugLog("free deced ref count " + (newCount&USE_COUNT_MASK) + " @" + Long.toHexString(memAddr), true);
       if (returnToAllocator ) {
-        /*
-        if(issueOnReturnCallback) {
-         final GemFireCacheImpl.StaticSystemCallbacks sysCb =
-              GemFireCacheImpl.FactoryStatics.systemCallbacks;
-          if(sysCb != null ) {
-            ChunkType ct = SimpleMemoryAllocatorImpl.getAllocator().getChunkFactory().getChunkTypeForRawBits(rawBits);
-            int dataSizeDelta = computeDataSizeDelta(rawBits);
-            sysCb.beforeReturningOffHeapMemoryToAllocator(memAddr, ct, dataSizeDelta);
-          }
-        }
-        */
-       
-        if (ReferenceCountHelper.trackReferenceCounts()) {
+       if (ReferenceCountHelper.trackReferenceCounts()) {
           if (ReferenceCountHelper.trackFreedReferenceCounts()) {
             ReferenceCountHelper.refCountChanged(memAddr, true, newCount&REF_COUNT_MASK);
           }
           ReferenceCountHelper.freeRefCountInfo(memAddr);
         }
-        
-        SimpleMemoryAllocatorImpl.getAllocator().freeChunk(memAddr);
+        if (freeListManager == null) {
+          freeListManager = SimpleMemoryAllocatorImpl.getAllocator().getFreeListManager();
+        }
+        freeListManager.free(memAddr);
       } else {
         if (ReferenceCountHelper.trackReferenceCounts()) {
           ReferenceCountHelper.refCountChanged(memAddr, true, newCount&REF_COUNT_MASK);
         }
       }
-    }
-    
-    private static int computeDataSizeDelta(int rawBits) {
-      int dataSizeDelta = rawBits;
-      dataSizeDelta &= DATA_SIZE_DELTA_MASK;
-      dataSizeDelta >>= DATA_SIZE_SHIFT;
-      return dataSizeDelta;
     }
     
     @Override
