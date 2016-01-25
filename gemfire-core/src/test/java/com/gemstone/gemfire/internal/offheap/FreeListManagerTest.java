@@ -7,6 +7,7 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class FreeListManagerTest {
@@ -56,10 +57,36 @@ public class FreeListManagerTest {
   
   @Test
   public void allocateTinyChunkHasCorrectSize() {
-    Chunk c = this.freeListManager.allocate(10, null);
+    int tinySize = 10;
+    Chunk c = this.freeListManager.allocate(tinySize, null);
     assertNotNull(c);
-    assertEquals(10, c.getDataSize());
-    assertEquals(24, c.getSize());
+    assertEquals(tinySize, c.getDataSize());
+    assertEquals(computeExpectedSize(tinySize), c.getSize());
+  }
+
+  @Ignore
+  @Test
+  public void allocateTinyChunkFromFreeListHasCorrectSize() {
+    int tinySize = 10;
+    Chunk c = this.freeListManager.allocate(tinySize, null);
+    assertNotNull(c);
+    this.freeListManager.free(c.getMemoryAddress()); // TODO can't call free here
+    c = this.freeListManager.allocate(tinySize, null);
+    assertEquals(tinySize, c.getDataSize());
+    assertEquals(computeExpectedSize(tinySize), c.getSize());
+  }
+
+  @Test
+  public void allocateHugeChunkHasCorrectSize() {
+    int hugeSize = FreeListManager.MAX_TINY+1;
+    Chunk c = this.freeListManager.allocate(hugeSize, null);
+    assertNotNull(c);
+    assertEquals(hugeSize, c.getDataSize());
+    assertEquals(computeExpectedSize(hugeSize), c.getSize());
+  }
+  
+  private int computeExpectedSize(int dataSize) {
+    return ((dataSize + Chunk.OFF_HEAP_HEADER_SIZE + 7) / 8) * 8;
   }
 
   @Test

@@ -131,7 +131,7 @@ public class FreeListManager {
     }
     this.fragmentList = new CopyOnWriteArrayList<Fragment>(tmp);
 
-    if(ma.validateMemoryWithFill) {
+    if(this.validateMemoryWithFill) {
       fillFragments();
     }
   }
@@ -259,6 +259,11 @@ public class FreeListManager {
   }
 
   private final AtomicInteger compactCount = new AtomicInteger();
+  /*
+   * Set this to "true" to perform data integrity checks on allocated and reused Chunks.  This may clobber 
+   * performance so turn on only when necessary.
+   */
+  final boolean validateMemoryWithFill = Boolean.getBoolean("gemfire.validateOffHeapWithFill");
   /**
    * How many extra allocations to do for each actual slab allocation.
    * Is this really a good idea?
@@ -427,7 +432,7 @@ public class FreeListManager {
         this.fragmentList.addAll(tmp);
 
         // Reinitialize fragments with fill pattern data
-        if(this.ma.validateMemoryWithFill) {
+        if(this.validateMemoryWithFill) {
           fillFragments();
         }
 
@@ -599,7 +604,7 @@ public class FreeListManager {
             allocSize -= chunkSize;
           }
 
-          if(this.ma.validateMemoryWithFill) {
+          if(this.validateMemoryWithFill) {
             result.validateFill();
           }
 
@@ -633,7 +638,7 @@ public class FreeListManager {
         Chunk result = this.ma.getChunkFactory().newChunk(memAddr, chunkType);
 
         // Data integrity check.
-        if(this.ma.validateMemoryWithFill) {          
+        if(this.validateMemoryWithFill) {          
           result.validateFill();
         }
 
@@ -657,7 +662,7 @@ public class FreeListManager {
         // close enough to the requested size; just return it.
 
         // Data integrity check.
-        if(this.ma.validateMemoryWithFill) {          
+        if(this.validateMemoryWithFill) {          
           result.validateFill();
         }
         if (chunkType.getSrcType() != Chunk.getSrcType(result.getMemoryAddress())) {
@@ -699,6 +704,10 @@ public class FreeListManager {
 
   @SuppressWarnings("synthetic-access")
   public void free(long addr) {
+    if (this.validateMemoryWithFill) {
+      Chunk.fill(addr);
+    }
+    
     free(addr, true);
   }
 

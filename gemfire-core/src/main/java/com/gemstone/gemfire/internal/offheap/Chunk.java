@@ -722,11 +722,6 @@ import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
           ReferenceCountHelper.freeRefCountInfo(memAddr);
         }
         
-        // Use fill pattern for free list data integrity check.
-        if(SimpleMemoryAllocatorImpl.getAllocator().validateMemoryWithFill) {
-          fill(memAddr);
-        }
-        
         SimpleMemoryAllocatorImpl.getAllocator().freeChunk(memAddr);
       } else {
         if (ReferenceCountHelper.trackReferenceCounts()) {

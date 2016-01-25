@@ -568,11 +568,5 @@ public class SimpleMemoryAllocatorImpl implements MemoryAllocator {
   public MemoryInspector getMemoryInspector() {
     return this.memoryInspector;
   }
-
-  /*
-   * Set this to "true" to perform data integrity checks on allocated and reused Chunks.  This may clobber 
-   * performance so turn on only when necessary.
-   */
-  final boolean validateMemoryWithFill = Boolean.getBoolean("gemfire.validateOffHeapWithFill");
   
 }
