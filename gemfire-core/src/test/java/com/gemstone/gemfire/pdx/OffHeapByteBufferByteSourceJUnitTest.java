@@ -34,7 +34,7 @@ public class OffHeapByteBufferByteSourceJUnitTest extends OffHeapByteSourceJUnit
   
   @Override
   protected ByteSource createByteSource(byte[] bytes) {
-    StoredObject so = SimpleMemoryAllocatorImpl.getAllocator().allocateAndInitialize(bytes, false, false, null);
+    StoredObject so = SimpleMemoryAllocatorImpl.getAllocator().allocateAndInitialize(bytes, false, false);
     if (so instanceof Chunk) {
       Chunk c = (Chunk) so;
       ByteBuffer bb = c.createDirectByteBuffer();

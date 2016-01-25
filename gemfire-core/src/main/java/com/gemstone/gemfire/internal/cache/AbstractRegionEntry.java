@@ -1346,7 +1346,7 @@ public abstract class AbstractRegionEntry implements RegionEntry,
         boolean isCompressed = compressedData != data;
         ReferenceCountHelper.setReferenceCountOwner(this);
         MemoryAllocator ma = SimpleMemoryAllocatorImpl.getAllocator(); // fix for bug 47875
-        val = ma.allocateAndInitialize(compressedData, isSerialized, isCompressed, GemFireChunk.TYPE); // TODO:KIRK:48068 race happens right after this line
+        val = ma.allocateAndInitialize(compressedData, isSerialized, isCompressed); // TODO:KIRK:48068 race happens right after this line
         ReferenceCountHelper.setReferenceCountOwner(null);
         if (val instanceof GemFireChunk) {
           val = new com.gemstone.gemfire.internal.offheap.ChunkWithHeapForm((GemFireChunk)val, data);

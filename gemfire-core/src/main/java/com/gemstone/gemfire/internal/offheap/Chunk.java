@@ -64,7 +64,7 @@ import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
      * Volatile int field
      * The upper two bits are used for the isSerialized
      * and isCompressed flags.
-     * The next three bits are used to encode the SRC_TYPE enum.
+     * The next three bits are unused.
      * The lower 3 bits of the most significant byte contains a magic number to help us detect
      * if we are changing the ref count of an object that has been released.
      * The next byte contains the dataSizeDelta.
@@ -81,8 +81,7 @@ import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
      */
     final static int IS_SERIALIZED_BIT =    0x80000000;
     final static int IS_COMPRESSED_BIT =    0x40000000;
-    final static int SRC_TYPE_MASK = 0x38000000;
-    final static int SRC_TYPE_SHIFT = 16/*refCount*/+8/*dataSize*/+3/*magicSize*/;
+    // UNUSED 0x38000000
     final static int MAGIC_MASK = 0x07000000;
     final static int MAGIC_NUMBER = 0x05000000;
     final static int DATA_SIZE_DELTA_MASK = 0x00ff0000;
@@ -92,39 +91,17 @@ import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
     final static long FILL_PATTERN = 0x3c3c3c3c3c3c3c3cL;
     final static byte FILL_BYTE = 0x3c;
     
-    // The 8 bits reserved for SRC_TYPE are basically no longer used.
-    // So we could free up these 8 bits for some other use or we could
-    // keep them for future extensions.
-    // If we ever want to allocate other "types" into a chunk of off-heap
-    // memory then the SRC_TYPE would be the way to go.
-    // For example we may want to allocate the memory for the off-heap
-    // RegionEntry in off-heap memory without it being of type GFE.
-    // When it is of type GFE then it either needs to be the bytes
-    // of a byte array or it needs to be a serialized java object.
-    // For the RegionEntry we may want all the primitive fields of
-    // the entry at certain offsets in the off-heap memory so we could
-    // access them directly in native byte format (i.e. no serialization).
-    // Note that for every SRC_TYPE we should have a ChunkType subclass.
-    public final static int SRC_TYPE_UNUSED0 = 0 << SRC_TYPE_SHIFT;
-    public final static int SRC_TYPE_UNUSED1 = 1 << SRC_TYPE_SHIFT;
-    public final static int SRC_TYPE_UNUSED2 = 2 << SRC_TYPE_SHIFT;
-    public final static int SRC_TYPE_UNUSED3 = 3 << SRC_TYPE_SHIFT;
-    public final static int SRC_TYPE_GFE = 4 << SRC_TYPE_SHIFT;
-    public final static int SRC_TYPE_UNUSED5 = 5 << SRC_TYPE_SHIFT;
-    public final static int SRC_TYPE_UNUSED6 = 6 << SRC_TYPE_SHIFT;
-    public final static int SRC_TYPE_UNUSED7 = 7 << SRC_TYPE_SHIFT;
-    
-    protected Chunk(long memoryAddress, int chunkSize, ChunkType chunkType) {
+    protected Chunk(long memoryAddress, int chunkSize) {
       SimpleMemoryAllocatorImpl.validateAddressAndSize(memoryAddress, chunkSize);
       this.memoryAddress = memoryAddress;
       setSize(chunkSize);
-      UnsafeMemoryChunk.writeAbsoluteIntVolatile(getMemoryAddress()+REF_COUNT_OFFSET, MAGIC_NUMBER|chunkType.getSrcType());
+      UnsafeMemoryChunk.writeAbsoluteIntVolatile(getMemoryAddress()+REF_COUNT_OFFSET, MAGIC_NUMBER);
     }
     public void readyForFree() {
       UnsafeMemoryChunk.writeAbsoluteIntVolatile(getMemoryAddress()+REF_COUNT_OFFSET, 0);
     }
-    public void readyForAllocation(ChunkType chunkType) {
-      if (!UnsafeMemoryChunk.writeAbsoluteIntVolatile(getMemoryAddress()+REF_COUNT_OFFSET, 0, MAGIC_NUMBER|chunkType.getSrcType())) {
+    public void readyForAllocation() {
+      if (!UnsafeMemoryChunk.writeAbsoluteIntVolatile(getMemoryAddress()+REF_COUNT_OFFSET, 0, MAGIC_NUMBER)) {
         throw new IllegalStateException("Expected 0 but found " + Integer.toHexString(UnsafeMemoryChunk.readAbsoluteIntVolatile(getMemoryAddress()+REF_COUNT_OFFSET)));
       }
     }
@@ -537,22 +514,6 @@ import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
     public static void setNext(long memAddr, long next) {
       SimpleMemoryAllocatorImpl.validateAddress(memAddr);
       UnsafeMemoryChunk.writeAbsoluteLong(memAddr+OFF_HEAP_HEADER_SIZE, next);
-    }
-    @Override
-    public ChunkType getChunkType() {
-      return SimpleMemoryAllocatorImpl.getAllocator().getChunkFactory().getChunkTypeForAddress(getMemoryAddress());
-    }
-    public static int getSrcTypeOrdinal(long memAddr) {
-      return getSrcType(memAddr) >> SRC_TYPE_SHIFT;
-    }
-    public static int getSrcType(long memAddr) {
-      return getSrcTypeFromRawBits(UnsafeMemoryChunk.readAbsoluteInt(memAddr+REF_COUNT_OFFSET));
-    }
-    public static int getSrcTypeFromRawBits(int rawBits) {
-      return rawBits & SRC_TYPE_MASK;
-    }
-    public static int getSrcTypeOrdinalFromRawBits(int rawBits) {
-      return getSrcTypeFromRawBits(rawBits) >> SRC_TYPE_SHIFT;
     }
     
     /**

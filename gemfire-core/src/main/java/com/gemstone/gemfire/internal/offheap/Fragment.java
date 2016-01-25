@@ -119,11 +119,6 @@ public class Fragment implements MemoryBlock {
   }
 
   @Override
-  public ChunkType getChunkType() {
-    return null;
-  }
-  
-  @Override
   public boolean equals(Object o) {
     if (o instanceof Fragment) {
       return getMemoryAddress() == ((Fragment) o).getMemoryAddress();

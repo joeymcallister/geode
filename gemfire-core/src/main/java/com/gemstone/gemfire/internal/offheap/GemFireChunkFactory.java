@@ -22,31 +22,12 @@ package com.gemstone.gemfire.internal.offheap;
  */
 public class GemFireChunkFactory implements ChunkFactory {
   @Override
-  public Chunk newChunk(long address, int chunkSize, ChunkType chunkType) {
-    assert chunkType.equals(GemFireChunk.TYPE);
+  public Chunk newChunk(long address, int chunkSize) {
     return new GemFireChunk(address,chunkSize);
   }
 
   @Override
   public Chunk newChunk(long address) {
     return new GemFireChunk(address);
-  }
-
-  @Override
-  public Chunk newChunk(long address, ChunkType chunkType) {
-    assert chunkType.equals(GemFireChunk.TYPE);
-    return new GemFireChunk(address);
-  }
-
-  @Override
-  public ChunkType getChunkTypeForAddress(long address) {
-    assert Chunk.getSrcType(address) == Chunk.SRC_TYPE_GFE;
-    return GemFireChunk.TYPE;
-  }
-
-  @Override
-  public ChunkType getChunkTypeForRawBits(int bits) {
-    assert Chunk.getSrcTypeFromRawBits(bits) == Chunk.SRC_TYPE_GFE;
-    return GemFireChunk.TYPE;
   }
 }

@@ -157,19 +157,15 @@ public class FreeListManager {
    * Maybe it would be better for 3 to look for adjacent free blocks that can be merged together.
    * For now we will just try 1 and 2 and then report out of mem.
    * @param size minimum bytes the returned chunk must have.
-   * @param chunkType TODO
    * @return the allocated chunk
    * @throws IllegalStateException if a chunk can not be allocated.
    */
   @SuppressWarnings("synthetic-access")
-  public Chunk allocate(int size, ChunkType chunkType) {
+  public Chunk allocate(int size) {
     Chunk result = null;
     {
       assert size > 0;
-      if (chunkType == null) {
-        chunkType = GemFireChunk.TYPE;
-      }
-      result = basicAllocate(size, true, chunkType);
+      result = basicAllocate(size, true);
       result.setDataSize(size);
     }
     OffHeapMemoryStats stats = this.ma.getStats();
@@ -184,7 +180,7 @@ public class FreeListManager {
     return result;
   }
 
-  private Chunk basicAllocate(int size, boolean useSlabs, ChunkType chunkType) {
+  private Chunk basicAllocate(int size, boolean useSlabs) {
     if (useSlabs) {
       // Every object stored off heap has a header so we need
       // to adjust the size so that the header gets allocated.
@@ -193,23 +189,23 @@ public class FreeListManager {
       size += Chunk.OFF_HEAP_HEADER_SIZE;
     }
     if (size <= MAX_TINY) {
-      return allocateTiny(size, useSlabs, chunkType);
+      return allocateTiny(size, useSlabs);
     } else {
-      return allocateHuge(size, useSlabs, chunkType);
+      return allocateHuge(size, useSlabs);
     }
   }
 
-  private Chunk allocateFromFragments(int chunkSize, ChunkType chunkType) {
+  private Chunk allocateFromFragments(int chunkSize) {
     do {
       final int lastAllocationId = this.lastFragmentAllocation.get();
       for (int i=lastAllocationId; i < this.fragmentList.size(); i++) {
-        Chunk result = allocateFromFragment(i, chunkSize, chunkType);
+        Chunk result = allocateFromFragment(i, chunkSize);
         if (result != null) {
           return result;
         }
       }
       for (int i=0; i < lastAllocationId; i++) {
-        Chunk result = allocateFromFragment(i, chunkSize, chunkType);
+        Chunk result = allocateFromFragment(i, chunkSize);
         if (result != null) {
           return result;
         }
@@ -556,7 +552,7 @@ public class FreeListManager {
     }
   }
 
-  private Chunk allocateFromFragment(final int fragIdx, final int chunkSize, ChunkType chunkType) {
+  private Chunk allocateFromFragment(final int fragIdx, final int chunkSize) {
     if (fragIdx >= this.fragmentList.size()) return null;
     final Fragment fragment;
     try {
@@ -592,7 +588,7 @@ public class FreeListManager {
           // We did the allocate!
           this.lastFragmentAllocation.set(fragIdx);
           ChunkFactory cf = this.ma.getChunkFactory();
-          Chunk result = cf.newChunk(fragment.getMemoryAddress()+oldOffset, chunkSize+extraSize, chunkType);
+          Chunk result = cf.newChunk(fragment.getMemoryAddress()+oldOffset, chunkSize+extraSize);
           allocSize -= chunkSize+extraSize;
           oldOffset += extraSize;
           while (allocSize > 0) {
@@ -600,7 +596,7 @@ public class FreeListManager {
             // we add the batch ones immediately to the freelist
             result.readyForFree();
             free(result.getMemoryAddress(), false);
-            result = cf.newChunk(fragment.getMemoryAddress()+oldOffset, chunkSize, chunkType);
+            result = cf.newChunk(fragment.getMemoryAddress()+oldOffset, chunkSize);
             allocSize -= chunkSize;
           }
 
@@ -613,7 +609,7 @@ public class FreeListManager {
           // TODO OFFHEAP: if batch allocations are disabled should we not call basicAllocate here?
           // Since we know another thread did a concurrent alloc
           // that possibly did a batch check the free list again.
-          Chunk result = basicAllocate(chunkSize, false, chunkType);
+          Chunk result = basicAllocate(chunkSize, false);
           if (result != null) {
             return result;
           }
@@ -627,32 +623,32 @@ public class FreeListManager {
   private int round(int multiple, int value) {
     return (int) ((((long)value + (multiple-1)) / multiple) * multiple);
   }
-  private Chunk allocateTiny(int size, boolean useFragments, ChunkType chunkType) {
-    return basicAllocate(getNearestTinyMultiple(size), TINY_MULTIPLE, 0, this.tinyFreeLists, useFragments, chunkType);
+  private Chunk allocateTiny(int size, boolean useFragments) {
+    return basicAllocate(getNearestTinyMultiple(size), TINY_MULTIPLE, 0, this.tinyFreeLists, useFragments);
   }
-  private Chunk basicAllocate(int idx, int multiple, int offset, AtomicReferenceArray<SyncChunkStack> freeLists, boolean useFragments, ChunkType chunkType) {
+  private Chunk basicAllocate(int idx, int multiple, int offset, AtomicReferenceArray<SyncChunkStack> freeLists, boolean useFragments) {
     SyncChunkStack clq = freeLists.get(idx);
     if (clq != null) {
       long memAddr = clq.poll();
       if (memAddr != 0) {
-        Chunk result = this.ma.getChunkFactory().newChunk(memAddr, chunkType);
+        Chunk result = this.ma.getChunkFactory().newChunk(memAddr);
 
         // Data integrity check.
         if(this.validateMemoryWithFill) {          
           result.validateFill();
         }
 
-        result.readyForAllocation(chunkType);
+        result.readyForAllocation();
         return result;
       }
     }
     if (useFragments) {
-      return allocateFromFragments(((idx+1)*multiple)+offset, chunkType);
+      return allocateFromFragments(((idx+1)*multiple)+offset);
     } else {
       return null;
     }
   }
-  private Chunk allocateHuge(int size, boolean useFragments, ChunkType chunkType) {
+  private Chunk allocateHuge(int size, boolean useFragments) {
     // sizeHolder is a fake Chunk used to search our sorted hugeChunkSet.
     Chunk sizeHolder = new FakeChunk(size);
     NavigableSet<Chunk> ts = this.hugeChunkSet.tailSet(sizeHolder);
@@ -662,15 +658,10 @@ public class FreeListManager {
         // close enough to the requested size; just return it.
 
         // Data integrity check.
-        if(this.validateMemoryWithFill) {          
+        if(this.validateMemoryWithFill) {
           result.validateFill();
         }
-        if (chunkType.getSrcType() != Chunk.getSrcType(result.getMemoryAddress())) {
-          // The java wrapper class that was cached in the huge chunk list is the wrong type.
-          // So allocate a new one and garbage collect the old one.
-          result = this.ma.getChunkFactory().newChunk(result.getMemoryAddress(), chunkType);
-        }
-        result.readyForAllocation(chunkType);
+        result.readyForAllocation();
         return result;
       } else {
         this.hugeChunkSet.add(result);
@@ -679,7 +670,7 @@ public class FreeListManager {
     if (useFragments) {
       // We round it up to the next multiple of TINY_MULTIPLE to make
       // sure we always have chunks allocated on an 8 byte boundary.
-      return allocateFromFragments(round(TINY_MULTIPLE, size), chunkType);
+      return allocateFromFragments(round(TINY_MULTIPLE, size));
     } else {
       return null;
     }
@@ -873,11 +864,6 @@ public class FreeListManager {
       return null;
     }
 
-    @Override
-    public ChunkType getChunkType() {
-      return null;
-    }
-    
     @Override
     public boolean equals(Object o) {
       if (o instanceof TinyMemoryBlock) {

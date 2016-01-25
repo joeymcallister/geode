@@ -56,7 +56,7 @@ public class GemFireChunkFactoryJUnitTest {
     boolean isSerialized = true;
     boolean isCompressed = false;
 
-    GemFireChunk chunk = (GemFireChunk) ma.allocateAndInitialize(v, isSerialized, isCompressed, GemFireChunk.TYPE);
+    GemFireChunk chunk = (GemFireChunk) ma.allocateAndInitialize(v, isSerialized, isCompressed);
 
     return chunk;
   }
@@ -72,57 +72,6 @@ public class GemFireChunkFactoryJUnitTest {
     assertEquals(GemFireChunk.class, newChunk.getClass());
 
     assertThat(newChunk.getMemoryAddress()).isEqualTo(chunk.getMemoryAddress());
-
-    chunk.release();
-  }
-
-  @Test
-  public void factoryShouldCreateNewChunkWithGivenAddressAndType() {
-    GemFireChunk chunk = createChunk(Long.MAX_VALUE);
-
-    ChunkFactory factory = new GemFireChunkFactory();
-    Chunk newChunk = factory.newChunk(chunk.getMemoryAddress(), GemFireChunk.TYPE);
-
-    assertNotNull(newChunk);
-    assertEquals(GemFireChunk.class, newChunk.getClass());
-
-    assertThat(newChunk.getMemoryAddress()).isEqualTo(chunk.getMemoryAddress());
-    assertThat(newChunk.getChunkType()).isEqualTo(GemFireChunk.TYPE);
-
-    chunk.release();
-  }
-
-  @Test
-  public void shouldGetChunkTypeFromAddress() {
-    byte[] v = EntryEventImpl.serialize(Long.MAX_VALUE);
-
-    boolean isSerialized = true;
-    boolean isCompressed = false;
-
-    GemFireChunk chunk = (GemFireChunk) ma.allocateAndInitialize(v, isSerialized, isCompressed, GemFireChunk.TYPE);
-
-    ChunkFactory factory = new GemFireChunkFactory();
-    ChunkType actualType = factory.getChunkTypeForAddress(chunk.getMemoryAddress());
-
-    assertEquals(GemFireChunk.TYPE, actualType);
-
-    chunk.release();
-  }
-
-  @Test
-  public void shouldGetChunkTypeFromRawBits() {
-    byte[] v = EntryEventImpl.serialize(Long.MAX_VALUE);
-
-    boolean isSerialized = true;
-    boolean isCompressed = false;
-
-    GemFireChunk chunk = (GemFireChunk) ma.allocateAndInitialize(v, isSerialized, isCompressed, GemFireChunk.TYPE);
-
-    int rawBits = UnsafeMemoryChunk.readAbsoluteIntVolatile(chunk.getMemoryAddress() + 4 /* REF_COUNT_OFFSET */);
-
-    ChunkFactory factory = new GemFireChunkFactory();
-    ChunkType actualType = factory.getChunkTypeForRawBits(rawBits);
-    assertEquals(GemFireChunk.TYPE, actualType);
 
     chunk.release();
   }

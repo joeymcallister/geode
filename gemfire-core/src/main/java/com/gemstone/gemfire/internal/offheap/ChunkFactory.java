@@ -26,26 +26,11 @@ public interface ChunkFactory  {
   /**
    * Create a new chunk of the given size and type at the given address.
    */
-  Chunk newChunk(long address, int chunkSize, ChunkType chunkType);
+  Chunk newChunk(long address, int chunkSize);
   /**
    * Create a new chunk for a block of memory (identified by address)
    * that has already been allocated.
    * The size and type are derived from the existing object header.
    */
   Chunk newChunk(long address);
-  /**
-   * Create a new chunk of the given type for a block of memory (identified by address)
-   * that has already been allocated.
-   * The size is derived from the existing object header.
-   */
-  Chunk newChunk(long address, ChunkType chunkType);
-  /**
-   * Given the address of an existing chunk return its ChunkType.
-   */
-  ChunkType getChunkTypeForAddress(long address);
-  /**
-   * Given the rawBits from the object header of an existing chunk
-   * return its ChunkType.
-   */
-  ChunkType getChunkTypeForRawBits(int bits);
 }

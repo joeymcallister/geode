@@ -113,7 +113,7 @@ public abstract class OldValueImporterTestBase {
           SimpleMemoryAllocatorImpl.createForUnitTest(new NullOutOfOffHeapMemoryListener(), new NullOffHeapMemoryStats(), new UnsafeMemoryChunk[]{new UnsafeMemoryChunk(1024*1024)});
       try {
         byte[] baValue = new byte[] {1,2};
-        DataAsAddress baValueSO = (DataAsAddress) sma.allocateAndInitialize(baValue, false, false, null);
+        DataAsAddress baValueSO = (DataAsAddress) sma.allocateAndInitialize(baValue, false, false);
         OldValueImporter omsg = createImporter();
         omsg.importOldObject(baValueSO, false);
         hdos = new HeapDataOutputStream(bytes);
@@ -130,7 +130,7 @@ public abstract class OldValueImporterTestBase {
           SimpleMemoryAllocatorImpl.createForUnitTest(new NullOutOfOffHeapMemoryListener(), new NullOffHeapMemoryStats(), new UnsafeMemoryChunk[]{new UnsafeMemoryChunk(1024*1024)});
       try {
         byte[] baValue = new byte[] {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17};
-        Chunk baValueSO = (Chunk) sma.allocateAndInitialize(baValue, false, false, null);
+        Chunk baValueSO = (Chunk) sma.allocateAndInitialize(baValue, false, false);
         OldValueImporter omsg = createImporter();
         omsg.importOldObject(baValueSO, false);
         hdos = new HeapDataOutputStream(bytes);
@@ -148,7 +148,7 @@ public abstract class OldValueImporterTestBase {
       try {
         String baValue = "12";
         byte[] baValueBlob = BlobHelper.serializeToBlob(baValue);
-        DataAsAddress baValueSO = (DataAsAddress) sma.allocateAndInitialize(baValueBlob, true, false, null);
+        DataAsAddress baValueSO = (DataAsAddress) sma.allocateAndInitialize(baValueBlob, true, false);
         OldValueImporter omsg = createImporter();
         omsg.importOldObject(baValueSO, true);
         hdos = new HeapDataOutputStream(bytes);
@@ -166,7 +166,7 @@ public abstract class OldValueImporterTestBase {
       try {
         String baValue = "12345678";
         byte[] baValueBlob = BlobHelper.serializeToBlob(baValue);
-        Chunk baValueSO = (Chunk) sma.allocateAndInitialize(baValueBlob, true, false, null);
+        Chunk baValueSO = (Chunk) sma.allocateAndInitialize(baValueBlob, true, false);
         OldValueImporter omsg = createImporter();
         omsg.importOldObject(baValueSO, true);
         hdos = new HeapDataOutputStream(bytes);

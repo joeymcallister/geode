@@ -320,9 +320,9 @@ public class SimpleMemoryAllocatorImpl implements MemoryAllocator {
   }
 
   @Override
-  public MemoryChunk allocate(int size, ChunkType chunkType) {
+  public MemoryChunk allocate(int size) {
     //System.out.println("allocating " + size);
-    Chunk result = this.freeList.allocate(size, chunkType);
+    Chunk result = this.freeList.allocate(size);
     //("allocated off heap object of size " + size + " @" + Long.toHexString(result.getMemoryAddress()), true);
     if (ReferenceCountHelper.trackReferenceCounts()) {
       ReferenceCountHelper.refCountChanged(result.getMemoryAddress(), false, 1);
@@ -339,22 +339,17 @@ public class SimpleMemoryAllocatorImpl implements MemoryAllocator {
   }
   
   @Override
-  public StoredObject allocateAndInitialize(byte[] v, boolean isSerialized, boolean isCompressed, ChunkType chunkType) {
+  public StoredObject allocateAndInitialize(byte[] v, boolean isSerialized, boolean isCompressed) {
     long addr = OffHeapRegionEntryHelper.encodeDataAsAddress(v, isSerialized, isCompressed);
     if (addr != 0L) {
       return new DataAsAddress(addr);
     }
-    if (chunkType == null) {
-      chunkType = GemFireChunk.TYPE;
-    }
-
-    Chunk result = this.freeList.allocate(v.length, chunkType);
+    Chunk result = this.freeList.allocate(v.length);
     //debugLog("allocated off heap object of size " + v.length + " @" + Long.toHexString(result.getMemoryAddress()), true);
     //debugLog("allocated off heap object of size " + v.length + " @" + Long.toHexString(result.getMemoryAddress()) +  "chunkSize=" + result.getSize() + " isSerialized=" + isSerialized + " v=" + Arrays.toString(v), true);
     if (ReferenceCountHelper.trackReferenceCounts()) {
       ReferenceCountHelper.refCountChanged(result.getMemoryAddress(), false, 1);
     }
-    assert result.getChunkType() == chunkType: "chunkType=" + chunkType + " getChunkType()=" + result.getChunkType();
     result.setSerializedValue(v);
     result.setSerialized(isSerialized);
     result.setCompressed(isCompressed);

@@ -23,14 +23,8 @@ package com.gemstone.gemfire.internal.offheap;
  * is always an entry value of a Region.
  */
 public class GemFireChunk extends Chunk {
-  public static final ChunkType TYPE = new ChunkType() {
-    @Override
-    public int getSrcType() {
-      return Chunk.SRC_TYPE_GFE;
-    }
-  };
   public GemFireChunk(long memoryAddress, int chunkSize) {
-    super(memoryAddress, chunkSize, TYPE);
+    super(memoryAddress, chunkSize);
   }
 
   public GemFireChunk(long memoryAddress) {

@@ -52,7 +52,7 @@ public class OffHeapWriteObjectAsByteArrayJUnitTest {
   }
   
   private StoredObject createStoredObject(byte[] bytes, boolean isSerialized, boolean isCompressed) {
-    return SimpleMemoryAllocatorImpl.getAllocator().allocateAndInitialize(bytes, isSerialized, isCompressed, null);
+    return SimpleMemoryAllocatorImpl.getAllocator().allocateAndInitialize(bytes, isSerialized, isCompressed);
   }
   
   private DataInputStream createInput(HeapDataOutputStream hdos) {

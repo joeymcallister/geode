@@ -126,10 +126,6 @@ public class MemoryBlockNode implements MemoryBlock {
       sb.append(getFreeListId());
     }
     sb.append(", RefCount=").append(getRefCount());
-    ChunkType ct = this.getChunkType();
-    if (ct != null) {
-      sb.append(", " + ct);
-    }
     sb.append(", isSerialized=").append(isSerialized());
     sb.append(", isCompressed=").append(isCompressed());
     sb.append(", DataType=").append(getDataType());
@@ -149,10 +145,6 @@ public class MemoryBlockNode implements MemoryBlock {
     }
     sb.append("}");
     return sb.toString();
-  }
-  @Override
-  public ChunkType getChunkType() {
-    return this.block.getChunkType();
   }
   
   @Override

@@ -203,10 +203,10 @@ public class SimpleMemoryAllocatorJUnitTest {
       assertEquals(TOTAL_MEM, ma.freeList.getFreeFragmentMemory());
       assertEquals(0, ma.freeList.getFreeTinyMemory());
       assertEquals(0, ma.freeList.getFreeHugeMemory());
-      MemoryChunk tinymc = ma.allocate(maxTiny, null);
+      MemoryChunk tinymc = ma.allocate(maxTiny);
       assertEquals(TOTAL_MEM-round(TINY_MULTIPLE, maxTiny+perObjectOverhead), ma.getFreeMemory());
       assertEquals(round(TINY_MULTIPLE, maxTiny+perObjectOverhead)*(BATCH_SIZE-1), ma.freeList.getFreeTinyMemory());
-      MemoryChunk hugemc = ma.allocate(minHuge, null);
+      MemoryChunk hugemc = ma.allocate(minHuge);
       assertEquals(TOTAL_MEM-round(TINY_MULTIPLE, minHuge+perObjectOverhead)/*-round(BIG_MULTIPLE, maxBig+perObjectOverhead)*/-round(TINY_MULTIPLE, maxTiny+perObjectOverhead), ma.getFreeMemory());
       long freeSlab = ma.freeList.getFreeFragmentMemory();
       long oldFreeHugeMemory = ma.freeList.getFreeHugeMemory();
@@ -220,10 +220,10 @@ public class SimpleMemoryAllocatorJUnitTest {
       assertEquals(round(TINY_MULTIPLE, maxTiny+perObjectOverhead), ma.freeList.getFreeTinyMemory()-oldFreeTinyMemory);
       assertEquals(TOTAL_MEM, ma.getFreeMemory());
       // now lets reallocate from the free lists
-      tinymc = ma.allocate(maxTiny, null);
+      tinymc = ma.allocate(maxTiny);
       assertEquals(oldFreeTinyMemory, ma.freeList.getFreeTinyMemory());
       assertEquals(TOTAL_MEM-round(TINY_MULTIPLE, maxTiny+perObjectOverhead), ma.getFreeMemory());
-      hugemc = ma.allocate(minHuge, null);
+      hugemc = ma.allocate(minHuge);
       assertEquals(oldFreeHugeMemory, ma.freeList.getFreeHugeMemory());
       assertEquals(TOTAL_MEM-round(TINY_MULTIPLE, minHuge+perObjectOverhead)/*-round(BIG_MULTIPLE, maxBig+perObjectOverhead)*/-round(TINY_MULTIPLE, maxTiny+perObjectOverhead), ma.getFreeMemory());
       hugemc.release();
@@ -235,22 +235,22 @@ public class SimpleMemoryAllocatorJUnitTest {
       assertEquals(TOTAL_MEM, ma.getFreeMemory());
       // None of the reallocates should have come from the slab.
       assertEquals(freeSlab, ma.freeList.getFreeFragmentMemory());
-      tinymc = ma.allocate(1, null);
+      tinymc = ma.allocate(1);
       assertEquals(round(TINY_MULTIPLE, 1+perObjectOverhead), tinymc.getSize());
       assertEquals(freeSlab-(round(TINY_MULTIPLE, 1+perObjectOverhead)*BATCH_SIZE), ma.freeList.getFreeFragmentMemory());
       freeSlab = ma.freeList.getFreeFragmentMemory();
       tinymc.release();
       assertEquals(round(TINY_MULTIPLE, maxTiny+perObjectOverhead)+(round(TINY_MULTIPLE, 1+perObjectOverhead)*BATCH_SIZE), ma.freeList.getFreeTinyMemory()-oldFreeTinyMemory);
       
-      hugemc = ma.allocate(minHuge+1, null);
+      hugemc = ma.allocate(minHuge+1);
       assertEquals(round(TINY_MULTIPLE, minHuge+1+perObjectOverhead), hugemc.getSize());
       assertEquals(round(TINY_MULTIPLE, minHuge+perObjectOverhead)*(BATCH_SIZE-1), ma.freeList.getFreeHugeMemory());
       hugemc.release();
       assertEquals(round(TINY_MULTIPLE, minHuge+perObjectOverhead)*BATCH_SIZE, ma.freeList.getFreeHugeMemory());
-      hugemc = ma.allocate(minHuge, null);
+      hugemc = ma.allocate(minHuge);
       assertEquals(round(TINY_MULTIPLE, minHuge+perObjectOverhead)*(BATCH_SIZE-1), ma.freeList.getFreeHugeMemory());
       if (BATCH_SIZE > 1) {
-        MemoryChunk hugemc2 = ma.allocate(minHuge, null);
+        MemoryChunk hugemc2 = ma.allocate(minHuge);
         assertEquals(round(TINY_MULTIPLE, minHuge+perObjectOverhead)*(BATCH_SIZE-2), ma.freeList.getFreeHugeMemory());
         hugemc2.release();
         assertEquals(round(TINY_MULTIPLE, minHuge+perObjectOverhead)*(BATCH_SIZE-1), ma.freeList.getFreeHugeMemory());
@@ -258,7 +258,7 @@ public class SimpleMemoryAllocatorJUnitTest {
       hugemc.release();
       assertEquals(round(TINY_MULTIPLE, minHuge+perObjectOverhead)*BATCH_SIZE, ma.freeList.getFreeHugeMemory());
       // now that we do compaction the following allocate works.
-      hugemc = ma.allocate(minHuge + HUGE_MULTIPLE + HUGE_MULTIPLE-1, null);
+      hugemc = ma.allocate(minHuge + HUGE_MULTIPLE + HUGE_MULTIPLE-1);
     } finally {
       SimpleMemoryAllocatorImpl.freeOffHeapMemory();
     }
@@ -274,7 +274,7 @@ public class SimpleMemoryAllocatorJUnitTest {
         bb.put((byte) i);
       }
       bb.position(0);
-      Chunk c = (Chunk) ma.allocateAndInitialize(bb.array(), false, false, null);
+      Chunk c = (Chunk) ma.allocateAndInitialize(bb.array(), false, false);
       assertEquals(1024, c.getDataSize());
       if (!Arrays.equals(bb.array(), c.getRawBytes())) {
         fail("arrays are not equal. Expected " + Arrays.toString(bb.array()) + " but found: " + Arrays.toString(c.getRawBytes()));
@@ -435,36 +435,36 @@ public class SimpleMemoryAllocatorJUnitTest {
     UnsafeMemoryChunk slab = new UnsafeMemoryChunk(TOTAL_MEM);
     try {
       SimpleMemoryAllocatorImpl ma = SimpleMemoryAllocatorImpl.createForUnitTest(new NullOutOfOffHeapMemoryListener(), new NullOffHeapMemoryStats(), new UnsafeMemoryChunk[]{slab});
-      MemoryChunk bmc = ma.allocate(BIG_ALLOC_SIZE-perObjectOverhead, null);
+      MemoryChunk bmc = ma.allocate(BIG_ALLOC_SIZE-perObjectOverhead);
       try {
-        MemoryChunk smc = ma.allocate(SMALL_ALLOC_SIZE-perObjectOverhead, null);
+        MemoryChunk smc = ma.allocate(SMALL_ALLOC_SIZE-perObjectOverhead);
         fail("Expected out of memory");
       } catch (OutOfOffHeapMemoryException expected) {
       }
       bmc.release();
       assertEquals(TOTAL_MEM, ma.freeList.getFreeMemory());
-      MemoryChunk smc1 = ma.allocate(SMALL_ALLOC_SIZE-perObjectOverhead, null);
-      MemoryChunk smc2 = ma.allocate(SMALL_ALLOC_SIZE-perObjectOverhead, null);
+      MemoryChunk smc1 = ma.allocate(SMALL_ALLOC_SIZE-perObjectOverhead);
+      MemoryChunk smc2 = ma.allocate(SMALL_ALLOC_SIZE-perObjectOverhead);
       smc2.release();
       assertEquals(TOTAL_MEM-SMALL_ALLOC_SIZE, ma.freeList.getFreeMemory());
       try {
-        bmc = ma.allocate(BIG_ALLOC_SIZE-perObjectOverhead, null);
+        bmc = ma.allocate(BIG_ALLOC_SIZE-perObjectOverhead);
         fail("Expected out of memory");
       } catch (OutOfOffHeapMemoryException expected) {
       }
       smc1.release();
       assertEquals(TOTAL_MEM, ma.freeList.getFreeMemory());
-      bmc = ma.allocate(BIG_ALLOC_SIZE-perObjectOverhead, null);
+      bmc = ma.allocate(BIG_ALLOC_SIZE-perObjectOverhead);
       bmc.release();
       assertEquals(TOTAL_MEM, ma.freeList.getFreeMemory());
       ArrayList<MemoryChunk> mcs = new ArrayList<MemoryChunk>();
       for (int i=0; i < BIG_ALLOC_SIZE/(8+perObjectOverhead); i++) {
-        mcs.add(ma.allocate(8, null));
+        mcs.add(ma.allocate(8));
       }
       checkMcs(mcs);
       assertEquals(0, ma.freeList.getFreeMemory());
       try {
-        ma.allocate(8, null);
+        ma.allocate(8);
         fail("expected out of memory");
       } catch (OutOfOffHeapMemoryException expected) {
       }
@@ -472,20 +472,20 @@ public class SimpleMemoryAllocatorJUnitTest {
       assertEquals(8+perObjectOverhead, ma.freeList.getFreeMemory());
       mcs.remove(0).release(); // frees 8+perObjectOverhead
       assertEquals((8+perObjectOverhead)*2, ma.freeList.getFreeMemory());
-      ma.allocate(16, null).release(); // allocates and frees 16+perObjectOverhead; still have perObjectOverhead
+      ma.allocate(16).release(); // allocates and frees 16+perObjectOverhead; still have perObjectOverhead
       assertEquals((8+perObjectOverhead)*2, ma.freeList.getFreeMemory());
       mcs.remove(0).release(); // frees 8+perObjectOverhead
       assertEquals((8+perObjectOverhead)*3, ma.freeList.getFreeMemory());
       mcs.remove(0).release(); // frees 8+perObjectOverhead
       assertEquals((8+perObjectOverhead)*4, ma.freeList.getFreeMemory());
       // At this point I should have 8*4 + perObjectOverhead*4 of free memory
-      ma.allocate(8*4+perObjectOverhead*3, null).release();
+      ma.allocate(8*4+perObjectOverhead*3).release();
       assertEquals((8+perObjectOverhead)*4, ma.freeList.getFreeMemory());
       mcs.remove(0).release(); // frees 8+perObjectOverhead
       assertEquals((8+perObjectOverhead)*5, ma.freeList.getFreeMemory());
       // At this point I should have 8*5 + perObjectOverhead*5 of free memory
       try {
-        ma.allocate((8*5+perObjectOverhead*4)+1, null);
+        ma.allocate((8*5+perObjectOverhead*4)+1);
         fail("expected out of memory");
       } catch (OutOfOffHeapMemoryException expected) {
       }
@@ -493,24 +493,24 @@ public class SimpleMemoryAllocatorJUnitTest {
       assertEquals((8+perObjectOverhead)*6, ma.freeList.getFreeMemory());
       checkMcs(mcs);
       // At this point I should have 8*6 + perObjectOverhead*6 of free memory
-      MemoryChunk mc24 = ma.allocate(24, null);
+      MemoryChunk mc24 = ma.allocate(24);
       checkMcs(mcs);
       assertEquals((8+perObjectOverhead)*6 - (24+perObjectOverhead), ma.freeList.getFreeMemory());
       // At this point I should have 8*3 + perObjectOverhead*5 of free memory
-      MemoryChunk mc16 = ma.allocate(16, null);
+      MemoryChunk mc16 = ma.allocate(16);
       checkMcs(mcs);
       assertEquals((8+perObjectOverhead)*6 - (24+perObjectOverhead) - (16+perObjectOverhead), ma.freeList.getFreeMemory());
       // At this point I should have 8*1 + perObjectOverhead*4 of free memory
-      mcs.add(ma.allocate(8, null));
+      mcs.add(ma.allocate(8));
       checkMcs(mcs);
       assertEquals((8+perObjectOverhead)*6 - (24+perObjectOverhead) - (16+perObjectOverhead) - (8+perObjectOverhead), ma.freeList.getFreeMemory());
       // At this point I should have 8*0 + perObjectOverhead*3 of free memory
-      MemoryChunk mcDO = ma.allocate(perObjectOverhead*2, null);
+      MemoryChunk mcDO = ma.allocate(perObjectOverhead*2);
       checkMcs(mcs);
       // At this point I should have 8*0 + perObjectOverhead*0 of free memory
       assertEquals(0, ma.freeList.getFreeMemory());
       try {
-        ma.allocate(1, null);
+        ma.allocate(1);
         fail("expected out of memory");
       } catch (OutOfOffHeapMemoryException expected) {
       }
@@ -533,7 +533,7 @@ public class SimpleMemoryAllocatorJUnitTest {
       }
       mcs.clear();
       assertEquals(TOTAL_MEM, ma.freeList.getFreeMemory());
-      bmc = ma.allocate(BIG_ALLOC_SIZE-perObjectOverhead, null);
+      bmc = ma.allocate(BIG_ALLOC_SIZE-perObjectOverhead);
       bmc.release();
     } finally {
       SimpleMemoryAllocatorImpl.freeOffHeapMemory();
@@ -560,12 +560,12 @@ public class SimpleMemoryAllocatorJUnitTest {
       
       this.expectedMemoryUsage = SMALL_ALLOC_SIZE;
       this.memoryUsageEventReceived = false;
-      MemoryChunk smc = ma.allocate(SMALL_ALLOC_SIZE-perObjectOverhead, null);
+      MemoryChunk smc = ma.allocate(SMALL_ALLOC_SIZE-perObjectOverhead);
       assertEquals(true, this.memoryUsageEventReceived);
       
       this.expectedMemoryUsage = SMALL_ALLOC_SIZE * 2;
       this.memoryUsageEventReceived = false;
-      smc = ma.allocate(SMALL_ALLOC_SIZE-perObjectOverhead, null);
+      smc = ma.allocate(SMALL_ALLOC_SIZE-perObjectOverhead);
       assertEquals(true, this.memoryUsageEventReceived);
       
       MemoryUsageListener unaddedListener = new MemoryUsageListener() {
@@ -582,7 +582,7 @@ public class SimpleMemoryAllocatorJUnitTest {
 
       this.expectedMemoryUsage = SMALL_ALLOC_SIZE * 2;
       this.memoryUsageEventReceived = false;
-      smc = ma.allocate(SMALL_ALLOC_SIZE-perObjectOverhead, null);
+      smc = ma.allocate(SMALL_ALLOC_SIZE-perObjectOverhead);
       assertEquals(false, this.memoryUsageEventReceived);
       
     } finally {
@@ -615,11 +615,11 @@ public class SimpleMemoryAllocatorJUnitTest {
     try {
       SimpleMemoryAllocatorImpl ma = SimpleMemoryAllocatorImpl.createForUnitTest(oooml, new NullOffHeapMemoryStats(), new UnsafeMemoryChunk[]{slab});
       // make a big allocation
-      MemoryChunk bmc = ma.allocate(BIG_ALLOC_SIZE-perObjectOverhead, null);
+      MemoryChunk bmc = ma.allocate(BIG_ALLOC_SIZE-perObjectOverhead);
       assertNull(ooom.get());
       // drive the ma to ooom with small allocations
       try {
-        MemoryChunk smc = ma.allocate(SMALL_ALLOC_SIZE-perObjectOverhead, null);
+        MemoryChunk smc = ma.allocate(SMALL_ALLOC_SIZE-perObjectOverhead);
         fail("Expected out of memory");
       } catch (OutOfOffHeapMemoryException expected) {
       }

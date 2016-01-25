@@ -173,7 +173,7 @@ public class SimpleMemoryAllocatorFillPatternIntegrationTest {
          */
         private void allocate() {          
           int allocation = chunkSizer.allocationSize();
-          Chunk chunk = (Chunk) allocator.allocate(allocation, null);
+          Chunk chunk = (Chunk) allocator.allocate(allocation);
           
           // This should always work just after allocation
           chunk.validateFill();

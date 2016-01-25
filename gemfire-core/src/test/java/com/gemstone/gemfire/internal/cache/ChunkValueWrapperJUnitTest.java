@@ -40,7 +40,7 @@ import com.gemstone.gemfire.test.junit.categories.UnitTest;
 public class ChunkValueWrapperJUnitTest {
 
   private static ChunkValueWrapper createChunkValueWrapper(byte[] bytes, boolean isSerialized) {
-    Chunk c = (Chunk)SimpleMemoryAllocatorImpl.getAllocator().allocateAndInitialize(bytes, isSerialized, false, null);
+    Chunk c = (Chunk)SimpleMemoryAllocatorImpl.getAllocator().allocateAndInitialize(bytes, isSerialized, false);
     return new ChunkValueWrapper(c);
   }
 

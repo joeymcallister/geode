@@ -101,7 +101,7 @@ public class SimpleMemoryAllocatorFillPatternJUnitTest {
      * Pull a chunk off the fragment.  This will have no fill because
      * it is a "fresh" chunk.
      */
-    Chunk chunk = (Chunk) this.allocator.allocate(chunkSize, null);
+    Chunk chunk = (Chunk) this.allocator.allocate(chunkSize);
 
     /*
      * Chunk should have valid fill from initial fragment allocation.
@@ -118,7 +118,7 @@ public class SimpleMemoryAllocatorFillPatternJUnitTest {
      * This chunk should have a fill because it was reused from the
      * free list (assuming no fragmentation at this point...)
      */
-    chunk = (Chunk) this.allocator.allocate(chunkSize, null);
+    chunk = (Chunk) this.allocator.allocate(chunkSize);
     
     // Make sure we have a fill this time
     chunk.validateFill();
@@ -156,7 +156,7 @@ public class SimpleMemoryAllocatorFillPatternJUnitTest {
      * Our memory looks like [      ][      ][      ]
      */
     for(int i =0;i < allocatedChunks.length;++i) {
-      allocatedChunks[i] = (Chunk) this.allocator.allocate(COMPACTION_CHUNK_SIZE, null);
+      allocatedChunks[i] = (Chunk) this.allocator.allocate(COMPACTION_CHUNK_SIZE);
       allocatedChunks[i].validateFill();
     }
 
@@ -173,7 +173,7 @@ public class SimpleMemoryAllocatorFillPatternJUnitTest {
      * our initial chunks.  This should force a compaction causing our
      * memory to look like [            ][      ].
      */
-    Chunk slightlyLargerChunk = (Chunk) this.allocator.allocate(FORCE_COMPACTION_CHUNK_SIZE, null);
+    Chunk slightlyLargerChunk = (Chunk) this.allocator.allocate(FORCE_COMPACTION_CHUNK_SIZE);
     
     /*
      * Make sure the compacted memory has the fill validation.

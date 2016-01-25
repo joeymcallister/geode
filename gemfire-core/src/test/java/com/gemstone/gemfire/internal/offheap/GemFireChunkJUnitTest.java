@@ -123,7 +123,7 @@ public class GemFireChunkJUnitTest extends AbstractStoredObjectTestBase {
   }
 
   private GemFireChunk createChunk(byte[] v, boolean isSerialized, boolean isCompressed) {
-    GemFireChunk chunk = (GemFireChunk) ma.allocateAndInitialize(v, isSerialized, isCompressed, GemFireChunk.TYPE);
+    GemFireChunk chunk = (GemFireChunk) ma.allocateAndInitialize(v, isSerialized, isCompressed);
     return chunk;
   }
 
@@ -253,7 +253,7 @@ public class GemFireChunkJUnitTest extends AbstractStoredObjectTestBase {
     boolean isSerialized = false;
     boolean isCompressed = false;
 
-    GemFireChunk chunk = (GemFireChunk) ma.allocateAndInitialize(regionEntryValueAsBytes, isSerialized, isCompressed, GemFireChunk.TYPE);
+    GemFireChunk chunk = (GemFireChunk) ma.allocateAndInitialize(regionEntryValueAsBytes, isSerialized, isCompressed);
 
     int headerBeforeSerializedBitSet = UnsafeMemoryChunk.readAbsoluteIntVolatile(chunk.getMemoryAddress() + Chunk.REF_COUNT_OFFSET);
 
@@ -287,7 +287,7 @@ public class GemFireChunkJUnitTest extends AbstractStoredObjectTestBase {
     boolean isSerialized = false;
     boolean isCompressed = false;
 
-    GemFireChunk chunk = (GemFireChunk) ma.allocateAndInitialize(regionEntryValueAsBytes, isSerialized, isCompressed, GemFireChunk.TYPE);
+    GemFireChunk chunk = (GemFireChunk) ma.allocateAndInitialize(regionEntryValueAsBytes, isSerialized, isCompressed);
 
     int headerBeforeCompressedBitSet = UnsafeMemoryChunk.readAbsoluteIntVolatile(chunk.getMemoryAddress() + Chunk.REF_COUNT_OFFSET);
 
@@ -440,7 +440,7 @@ public class GemFireChunkJUnitTest extends AbstractStoredObjectTestBase {
     boolean isSerialized = true;
     boolean isCompressed = true;
 
-    GemFireChunk chunk = (GemFireChunk) ma.allocateAndInitialize(regionEntryValueAsBytes, isSerialized, isCompressed, GemFireChunk.TYPE);
+    GemFireChunk chunk = (GemFireChunk) ma.allocateAndInitialize(regionEntryValueAsBytes, isSerialized, isCompressed);
 
     RegionEntryContext regionContext = mock(RegionEntryContext.class);
     CachePerfStats cacheStats = mock(CachePerfStats.class);
@@ -500,7 +500,7 @@ public class GemFireChunkJUnitTest extends AbstractStoredObjectTestBase {
     Chunk chunk = createValueAsSerializedStoredObject(getValue());
 
     // chunk is already allocated when we created it, so calling readyForAllocation should throw exception.
-    chunk.readyForAllocation(GemFireChunk.TYPE);
+    chunk.readyForAllocation();
 
     chunk.release();
   }
@@ -860,7 +860,7 @@ public class GemFireChunkJUnitTest extends AbstractStoredObjectTestBase {
     boolean isSerialized = true;
     boolean isCompressed = true;
 
-    GemFireChunk chunk = (GemFireChunk) ma.allocateAndInitialize(regionEntryValueAsBytes, isSerialized, isCompressed, GemFireChunk.TYPE);
+    GemFireChunk chunk = (GemFireChunk) ma.allocateAndInitialize(regionEntryValueAsBytes, isSerialized, isCompressed);
 
     chunk.getRawBytes();
 
@@ -875,7 +875,7 @@ public class GemFireChunkJUnitTest extends AbstractStoredObjectTestBase {
     boolean isSerialized = false;
     boolean isCompressed = false;
 
-    GemFireChunk chunk = (GemFireChunk) ma.allocateAndInitialize(regionEntryValueAsBytes, isSerialized, isCompressed, GemFireChunk.TYPE);
+    GemFireChunk chunk = (GemFireChunk) ma.allocateAndInitialize(regionEntryValueAsBytes, isSerialized, isCompressed);
 
     byte[] serializedValue = chunk.getSerializedValue();
 
@@ -885,30 +885,11 @@ public class GemFireChunkJUnitTest extends AbstractStoredObjectTestBase {
   }
 
   @Test
-  public void getSrcTypeOrdinalFromAddressShouldReturnOrdinal() {
-    GemFireChunk chunk = createValueAsUnserializedStoredObject(getValue());
-
-    assertThat(Chunk.getSrcTypeOrdinal(chunk.getMemoryAddress())).isEqualTo(Chunk.SRC_TYPE_GFE >> Chunk.SRC_TYPE_SHIFT);
-
-    chunk.release();
-  }
-
-  @Test
-  public void getSrcTypeOrdinalFromRawBitsShouldReturnOrdinal() {
-    GemFireChunk chunk = createValueAsUnserializedStoredObject(getValue());
-
-    int rawBits = UnsafeMemoryChunk.readAbsoluteIntVolatile(chunk.getMemoryAddress() + Chunk.REF_COUNT_OFFSET);
-    assertThat(Chunk.getSrcTypeOrdinalFromRawBits(rawBits)).isEqualTo(Chunk.SRC_TYPE_GFE >> Chunk.SRC_TYPE_SHIFT);
-
-    chunk.release();
-  }
-
-  @Test
   public void fillShouldFillTheChunk() {
     boolean isSerialized = false;
     boolean isCompressed = false;
 
-    GemFireChunk chunk = (GemFireChunk) ma.allocateAndInitialize(new byte[100], isSerialized, isCompressed, GemFireChunk.TYPE);
+    GemFireChunk chunk = (GemFireChunk) ma.allocateAndInitialize(new byte[100], isSerialized, isCompressed);
 
     // first fill the unused part with FILL_PATTERN
     Chunk.fill(chunk.getMemoryAddress());

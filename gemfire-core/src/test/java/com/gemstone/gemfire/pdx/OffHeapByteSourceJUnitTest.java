@@ -51,7 +51,7 @@ public class OffHeapByteSourceJUnitTest extends ByteSourceJUnitTest {
   
   @Override
   protected ByteSource createByteSource(byte[] bytes) {
-    StoredObject so = SimpleMemoryAllocatorImpl.getAllocator().allocateAndInitialize(bytes, false, false, null);
+    StoredObject so = SimpleMemoryAllocatorImpl.getAllocator().allocateAndInitialize(bytes, false, false);
     if (so instanceof Chunk) {
       // bypass the factory to make sure that OffHeapByteSource is tested
       return new OffHeapByteSource((Chunk)so);

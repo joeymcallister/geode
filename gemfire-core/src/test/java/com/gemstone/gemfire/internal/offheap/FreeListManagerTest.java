@@ -58,7 +58,7 @@ public class FreeListManagerTest {
   @Test
   public void allocateTinyChunkHasCorrectSize() {
     int tinySize = 10;
-    Chunk c = this.freeListManager.allocate(tinySize, null);
+    Chunk c = this.freeListManager.allocate(tinySize);
     assertNotNull(c);
     assertEquals(tinySize, c.getDataSize());
     assertEquals(computeExpectedSize(tinySize), c.getSize());
@@ -67,30 +67,57 @@ public class FreeListManagerTest {
   @Test
   public void allocateTinyChunkFromFreeListHasCorrectSize() {
     int tinySize = 10;
-    Chunk c = this.freeListManager.allocate(tinySize, null);
+    Chunk c = this.freeListManager.allocate(tinySize);
     assertNotNull(c);
     Chunk.release(c.getMemoryAddress(), this.freeListManager);
-    c = this.freeListManager.allocate(tinySize, null);
+    c = this.freeListManager.allocate(tinySize);
     assertEquals(tinySize, c.getDataSize());
     assertEquals(computeExpectedSize(tinySize), c.getSize());
+  }
+  
+  @Test
+  public void allocateTinyChunkFromEmptyFreeListHasCorrectSize() {
+    int dataSize = 10;
+    Chunk c = this.freeListManager.allocate(dataSize);
+    assertNotNull(c);
+    Chunk.release(c.getMemoryAddress(), this.freeListManager);
+    this.freeListManager.allocate(dataSize);
+    // free list will now be empty
+    c = this.freeListManager.allocate(dataSize);
+    assertEquals(dataSize, c.getDataSize());
+    assertEquals(computeExpectedSize(dataSize), c.getSize());
   }
 
   @Test
   public void allocateHugeChunkHasCorrectSize() {
     int hugeSize = FreeListManager.MAX_TINY+1;
-    Chunk c = this.freeListManager.allocate(hugeSize, null);
+    Chunk c = this.freeListManager.allocate(hugeSize);
     assertNotNull(c);
     assertEquals(hugeSize, c.getDataSize());
     assertEquals(computeExpectedSize(hugeSize), c.getSize());
   }
   
   @Test
-  public void allocateHugeChunkFromFreeListHasCorrectSize() {
+  public void allocateHugeChunkFromEmptyFreeListHasCorrectSize() {
     int dataSize = FreeListManager.MAX_TINY+1;
-    Chunk c = this.freeListManager.allocate(dataSize, null);
+    Chunk c = this.freeListManager.allocate(dataSize);
     assertNotNull(c);
     Chunk.release(c.getMemoryAddress(), this.freeListManager);
-    c = this.freeListManager.allocate(dataSize, null);
+    this.freeListManager.allocate(dataSize);
+    // free list will now be empty
+    c = this.freeListManager.allocate(dataSize);
+    assertEquals(dataSize, c.getDataSize());
+    assertEquals(computeExpectedSize(dataSize), c.getSize());
+  }
+
+  @Test
+  public void allocateHugeChunkFromFragmentWithItemInFreeListHasCorrectSize() {
+    int dataSize = FreeListManager.MAX_TINY+1+1024;
+    Chunk c = this.freeListManager.allocate(dataSize);
+    assertNotNull(c);
+    Chunk.release(c.getMemoryAddress(), this.freeListManager);
+    dataSize = FreeListManager.MAX_TINY+1;
+    c = this.freeListManager.allocate(dataSize);
     assertEquals(dataSize, c.getDataSize());
     assertEquals(computeExpectedSize(dataSize), c.getSize());
   }
@@ -99,22 +126,14 @@ public class FreeListManagerTest {
     return ((dataSize + Chunk.OFF_HEAP_HEADER_SIZE + 7) / 8) * 8;
   }
 
-  @Test
-  public void allocateTinyChunkWithExplicitTypeHasCorrectSize() {
-    Chunk c = this.freeListManager.allocate(10, GemFireChunk.TYPE);
-    assertNotNull(c);
-    assertEquals(10, c.getDataSize());
-    assertEquals(24, c.getSize());
-  }
-  
   @Test(expected = AssertionError.class)
   public void allocateZeroThrowsAssertion() {
-    this.freeListManager.allocate(0, null);
+    this.freeListManager.allocate(0);
   }
   
   @Test(expected = AssertionError.class)
   public void allocateNegativeThrowsAssertion() {
-    this.freeListManager.allocate(-123, null);
+    this.freeListManager.allocate(-123);
   }
   
   @Test
