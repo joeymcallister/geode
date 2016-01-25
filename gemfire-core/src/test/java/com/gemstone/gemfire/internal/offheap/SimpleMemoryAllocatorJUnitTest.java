@@ -189,7 +189,7 @@ public class SimpleMemoryAllocatorJUnitTest {
   }
   @Test
   public void testBasics() {
-    int BATCH_SIZE = com.gemstone.gemfire.internal.offheap.FreeListManager.BATCH_SIZE;
+    int BATCH_SIZE = 1;
     int TINY_MULTIPLE = com.gemstone.gemfire.internal.offheap.FreeListManager.TINY_MULTIPLE;
     int HUGE_MULTIPLE = com.gemstone.gemfire.internal.offheap.FreeListManager.HUGE_MULTIPLE;
     int perObjectOverhead = com.gemstone.gemfire.internal.offheap.Chunk.OFF_HEAP_HEADER_SIZE;
