@@ -317,14 +317,24 @@ public class SimpleMemoryAllocatorImpl implements MemoryAllocator {
     }
   }
 
-  @Override
-  public MemoryChunk allocate(int size) {
-    //System.out.println("allocating " + size);
+  private Chunk allocateChunk(int size) {
     Chunk result = this.freeList.allocate(size);
-    //("allocated off heap object of size " + size + " @" + Long.toHexString(result.getMemoryAddress()), true);
+    int resultSize = result.getSize();
+    stats.incObjects(1);
+    stats.incUsedMemory(resultSize);
+    stats.incFreeMemory(-resultSize);
+    notifyListeners();
     if (ReferenceCountHelper.trackReferenceCounts()) {
       ReferenceCountHelper.refCountChanged(result.getMemoryAddress(), false, 1);
     }
+    return result;
+  }
+  
+  @Override
+  public MemoryChunk allocate(int size) {
+    //System.out.println("allocating " + size);
+    Chunk result = allocateChunk(size);
+    //("allocated off heap object of size " + size + " @" + Long.toHexString(result.getMemoryAddress()), true);
     return result;
   }
   
@@ -342,12 +352,9 @@ public class SimpleMemoryAllocatorImpl implements MemoryAllocator {
     if (addr != 0L) {
       return new DataAsAddress(addr);
     }
-    Chunk result = this.freeList.allocate(v.length);
+    Chunk result = allocateChunk(v.length);
     //debugLog("allocated off heap object of size " + v.length + " @" + Long.toHexString(result.getMemoryAddress()), true);
     //debugLog("allocated off heap object of size " + v.length + " @" + Long.toHexString(result.getMemoryAddress()) +  "chunkSize=" + result.getSize() + " isSerialized=" + isSerialized + " v=" + Arrays.toString(v), true);
-    if (ReferenceCountHelper.trackReferenceCounts()) {
-      ReferenceCountHelper.refCountChanged(result.getMemoryAddress(), false, 1);
-    }
     result.setSerializedValue(v);
     result.setSerialized(isSerialized);
     result.setCompressed(isCompressed);

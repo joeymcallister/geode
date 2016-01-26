@@ -168,14 +168,8 @@ public class FreeListManager {
     Chunk result = basicAllocate(size, true);
 
     result.setDataSize(size);
-    OffHeapMemoryStats stats = this.ma.getStats();
-    stats.incObjects(1);
-    int resultSize = result.getSize();
-    this.allocatedSize.addAndGet(resultSize);
-    stats.incUsedMemory(resultSize);
-    stats.incFreeMemory(-resultSize);
+    this.allocatedSize.addAndGet(result.getSize());
     result.initializeUseCount();
-    this.ma.notifyListeners();
 
     return result;
   }
