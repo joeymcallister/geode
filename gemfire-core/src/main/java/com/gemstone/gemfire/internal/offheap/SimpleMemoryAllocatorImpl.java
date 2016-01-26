@@ -69,13 +69,6 @@ public class SimpleMemoryAllocatorImpl implements MemoryAllocator {
     return this.ooohml;
   }
 
-  /** The MemoryChunks that this allocator is managing by allocating smaller chunks of them.
-   * The contents of this array never change.
-   */
-  private final UnsafeMemoryChunk[] slabs;
-  private final long totalSlabSize;
-  private final int largestSlab;
-  
   public final FreeListManager freeList;
 
   private MemoryInspector memoryInspector;
@@ -114,7 +107,7 @@ public class SimpleMemoryAllocatorImpl implements MemoryAllocator {
     if (result != null) {
       result.reuse(ooohml, lw, stats, offHeapMemorySize, slabs);
       if (lw != null) {
-        lw.config("Reusing " + result.getTotalMemory() + " bytes of off-heap memory. The maximum size of a single off-heap object is " + result.largestSlab + " bytes.");
+        lw.config("Reusing " + result.getTotalMemory() + " bytes of off-heap memory. The maximum size of a single off-heap object is " + result.freeList.getLargestSlabSize() + " bytes.");
       }
       created = true;
       LifecycleListener.invokeAfterReuse(result);
@@ -204,17 +197,8 @@ public class SimpleMemoryAllocatorImpl implements MemoryAllocator {
         lw.warning("Using " + getTotalMemory() + " bytes of existing off-heap memory instead of the requested " + offHeapMemorySize);
       }
     }
-    if (slabs != null) {
-      // this will only happen in unit tests
-      if (slabs != this.slabs) {
-        // If the unit test gave us a different array
-        // of slabs then something is wrong because we
-        // are trying to reuse the old already allocated
-        // array which means that the new one will never
-        // be used. Note that this code does not bother
-        // comparing the contents of the arrays.
-        throw new IllegalStateException("attempted to reuse existing off-heap memory even though new off-heap memory was allocated");
-      }
+    if (!this.freeList.okToReuse(slabs)) {
+      throw new IllegalStateException("attempted to reuse existing off-heap memory even though new off-heap memory was allocated");
     }
     this.ooohml = oooml;
     newStats.initialize(this.stats);
@@ -228,24 +212,16 @@ public class SimpleMemoryAllocatorImpl implements MemoryAllocator {
     
     this.ooohml = oooml;
     this.stats = stats;
-    this.slabs = slabs;
 
     //OSProcess.printStacks(0, InternalDistributedSystem.getAnyInstance().getLogWriter(), false);
     this.stats.setFragments(slabs.length);
-    largestSlab = slabs[0].getSize();
-    this.stats.setLargestFragment(largestSlab);
-    long total = 0;
-    for (int i=0; i < slabs.length; i++) {
-      //debugLog("slab"+i + " @" + Long.toHexString(slabs[i].getMemoryAddress()), false);
-      //UnsafeMemoryChunk.clearAbsolute(slabs[i].getMemoryAddress(), slabs[i].getSize()); // HACK to see what this does to bug 47883
-      total += slabs[i].getSize();
-    }
-    totalSlabSize = total;
-    this.stats.incMaxMemory(this.totalSlabSize);
-    this.stats.incFreeMemory(this.totalSlabSize);
+    this.stats.setLargestFragment(slabs[0].getSize());
     
-    this.freeList = new FreeListManager(this);
+    this.freeList = new FreeListManager(this, slabs);
     this.memoryInspector = new MemoryInspectorImpl(this.freeList);
+
+    this.stats.incMaxMemory(this.freeList.getTotalMemory());
+    this.stats.incFreeMemory(this.freeList.getTotalMemory());
   }
   
   public List<Chunk> getLostChunks() {
@@ -373,7 +349,7 @@ public class SimpleMemoryAllocatorImpl implements MemoryAllocator {
 
   @Override
   public long getTotalMemory() {
-    return totalSlabSize;
+    return this.freeList.getTotalMemory();
   }
   
   @Override
@@ -398,7 +374,7 @@ public class SimpleMemoryAllocatorImpl implements MemoryAllocator {
   private void realClose() {
     // Removing this memory immediately can lead to a SEGV. See 47885.
     if (setClosed()) {
-      freeSlabs(this.slabs);
+      this.freeList.freeSlabs();
       this.stats.close();
       singleton = null;
     }
@@ -417,35 +393,15 @@ public class SimpleMemoryAllocatorImpl implements MemoryAllocator {
   }
   
 
-  private static void freeSlabs(final UnsafeMemoryChunk[] slabs) {
-    //debugLog("called freeSlabs", false);
-    for (int i=0; i < slabs.length; i++) {
-      slabs[i].release();
-    }
-  }
-  
   FreeListManager getFreeListManager() {
     return this.freeList;
-  }
-  
-  protected UnsafeMemoryChunk[] getSlabs() {
-    return this.slabs;
   }
   
   /**
    * Return the slabId of the slab that contains the given addr.
    */
   int findSlab(long addr) {
-    for (int i=0; i < this.slabs.length; i++) {
-      UnsafeMemoryChunk slab = this.slabs[i];
-      long slabAddr = slab.getMemoryAddress();
-      if (addr >= slabAddr) {
-        if (addr < slabAddr + slab.getSize()) {
-          return i;
-        }
-      }
-    }
-    throw new IllegalStateException("could not find a slab for addr " + addr);
+    return this.freeList.findSlab(addr);
   }
   
   public OffHeapMemoryStats getStats() {
@@ -507,12 +463,8 @@ public class SimpleMemoryAllocatorImpl implements MemoryAllocator {
       SimpleMemoryAllocatorImpl ma = SimpleMemoryAllocatorImpl.singleton;
       if (ma != null) {
         sb.append(". Valid addresses must be in one of the following ranges: ");
-        for (int i=0; i < ma.slabs.length; i++) {
-          long startAddr = ma.slabs[i].getMemoryAddress();
-          long endAddr = startAddr + ma.slabs[i].getSize();
-          sb.append("[").append(Long.toString(startAddr, 16)).append("..").append(Long.toString(endAddr, 16)).append("] ");
-        }
-      }
+        ma.freeList.getSlabDescriptions(sb);
+     }
       throw new IllegalStateException(sb.toString());
     }
     if (addr >= 0 && addr < 1024) {
@@ -525,18 +477,9 @@ public class SimpleMemoryAllocatorImpl implements MemoryAllocator {
     if (doExpensiveValidation) {
       SimpleMemoryAllocatorImpl ma = SimpleMemoryAllocatorImpl.singleton;
       if (ma != null) {
-        for (int i=0; i < ma.slabs.length; i++) {
-          if (ma.slabs[i].getMemoryAddress() <= addr && addr < (ma.slabs[i].getMemoryAddress() + ma.slabs[i].getSize())) {
-            // validate addr + size is within the same slab
-            if (size != -1) { // skip this check if size is -1
-              if (!(ma.slabs[i].getMemoryAddress() <= (addr+size-1) && (addr+size-1) < (ma.slabs[i].getMemoryAddress() + ma.slabs[i].getSize()))) {
-                throw new IllegalStateException(" address 0x" + Long.toString(addr+size-1, 16) + " does not address the original slab memory");
-              }
-            }
-            return;
-          }
+        if (!ma.freeList.validateAddressAndSizeWithinSlab(addr, size)) {
+          throw new IllegalStateException(" address 0x" + Long.toString(addr, 16) + " does not address the original slab memory");
         }
-        throw new IllegalStateException(" address 0x" + Long.toString(addr, 16) + " does not address the original slab memory");
       }
     }
   }

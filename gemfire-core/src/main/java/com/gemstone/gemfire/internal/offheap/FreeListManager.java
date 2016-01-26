@@ -37,6 +37,12 @@ import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
  * Manages the free lists for a SimpleMemoryAllocatorImpl
  */
 public class FreeListManager {
+  /** The MemoryChunks that this allocator is managing by allocating smaller chunks of them.
+   * The contents of this array never change.
+   */
+  private final UnsafeMemoryChunk[] slabs;
+  private final long totalSlabSize;
+  
   final private AtomicReferenceArray<SyncChunkStack> tinyFreeLists = new AtomicReferenceArray<SyncChunkStack>(TINY_FREE_LIST_COUNT);
   // hugeChunkSet is sorted by chunk size in ascending order. It will only contain chunks larger than MAX_TINY.
   private final ConcurrentSkipListSet<Chunk> hugeChunkSet = new ConcurrentSkipListSet<Chunk>();
@@ -47,7 +53,6 @@ public class FreeListManager {
   }
   List<Chunk> getLiveChunks() {
     ArrayList<Chunk> result = new ArrayList<Chunk>();
-    UnsafeMemoryChunk[] slabs = this.ma.getSlabs();
     for (int i=0; i < slabs.length; i++) {
       getLiveChunks(slabs[i], result);
     }
@@ -84,7 +89,7 @@ public class FreeListManager {
     return this.allocatedSize.get();
   }
   public long getFreeMemory() {
-    return this.ma.getTotalMemory() - getUsedMemory();
+    return getTotalMemory() - getUsedMemory();
   }
   long getFreeFragmentMemory() {
     long result = 0;
@@ -121,14 +126,17 @@ public class FreeListManager {
   private final CopyOnWriteArrayList<Fragment> fragmentList;
   private final SimpleMemoryAllocatorImpl ma;
 
-  public FreeListManager(SimpleMemoryAllocatorImpl ma) {
+  public FreeListManager(SimpleMemoryAllocatorImpl ma, final UnsafeMemoryChunk[] slabs) {
     this.ma = ma;
-    UnsafeMemoryChunk[] slabs = ma.getSlabs();
+    this.slabs = slabs;
+    long total = 0;
     Fragment[] tmp = new Fragment[slabs.length];
     for (int i=0; i < slabs.length; i++) {
       tmp[i] = new Fragment(slabs[i].getMemoryAddress(), slabs[i].getSize());
+      total += slabs[i].getSize();
     }
     this.fragmentList = new CopyOnWriteArrayList<Fragment>(tmp);
+    this.totalSlabSize = total;
 
     fillFragments();
   }
@@ -837,4 +845,64 @@ public class FreeListManager {
       return (int)(value ^ (value >>> 32));
     }
   }
+
+  long getTotalMemory() {
+    return this.totalSlabSize;
+  }
+  
+  void freeSlabs() {
+    for (int i=0; i < slabs.length; i++) {
+      slabs[i].release();
+    }
+  }
+  /**
+   * newSlabs will be non-null in unit tests.
+   * If the unit test gave us a different array
+   * of slabs then something is wrong because we
+   * are trying to reuse the old already allocated
+   * array which means that the new one will never
+   * be used. Note that this code does not bother
+   * comparing the contents of the arrays.
+   */
+  boolean okToReuse(UnsafeMemoryChunk[] newSlabs) {
+    return newSlabs == null || newSlabs == this.slabs;
+  }
+  
+  int getLargestSlabSize() {
+    return this.slabs[0].getSize();
+  }
+  int findSlab(long addr) {
+    for (int i=0; i < this.slabs.length; i++) {
+      UnsafeMemoryChunk slab = this.slabs[i];
+      long slabAddr = slab.getMemoryAddress();
+      if (addr >= slabAddr) {
+        if (addr < slabAddr + slab.getSize()) {
+          return i;
+        }
+      }
+    }
+    throw new IllegalStateException("could not find a slab for addr " + addr);
+  }
+  void getSlabDescriptions(StringBuilder sb) {
+    for (int i=0; i < slabs.length; i++) {
+      long startAddr = slabs[i].getMemoryAddress();
+      long endAddr = startAddr + slabs[i].getSize();
+      sb.append("[").append(Long.toString(startAddr, 16)).append("..").append(Long.toString(endAddr, 16)).append("] ");
+    }
+  }
+  boolean validateAddressAndSizeWithinSlab(long addr, int size) {
+    for (int i=0; i < slabs.length; i++) {
+      if (slabs[i].getMemoryAddress() <= addr && addr < (slabs[i].getMemoryAddress() + slabs[i].getSize())) {
+        // validate addr + size is within the same slab
+        if (size != -1) { // skip this check if size is -1
+          if (!(slabs[i].getMemoryAddress() <= (addr+size-1) && (addr+size-1) < (slabs[i].getMemoryAddress() + slabs[i].getSize()))) {
+            throw new IllegalStateException(" address 0x" + Long.toString(addr+size-1, 16) + " does not address the original slab memory");
+          }
+        }
+        return true;
+      }
+    }
+    return false;
+  }
+  
 }

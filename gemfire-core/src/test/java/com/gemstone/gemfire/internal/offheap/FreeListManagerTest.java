@@ -31,11 +31,10 @@ public class FreeListManagerTest {
 
   @Before
   public void setUp() throws Exception {
-    when(ma.getSlabs()).thenReturn(new UnsafeMemoryChunk[] {slab});
     when(ma.getTotalMemory()).thenReturn((long) slab.getSize());
     when(ma.getStats()).thenReturn(stats);
     
-    this.freeListManager = new FreeListManager(ma);
+    this.freeListManager = new FreeListManager(ma, new UnsafeMemoryChunk[] {slab});
   }
 
   @After
