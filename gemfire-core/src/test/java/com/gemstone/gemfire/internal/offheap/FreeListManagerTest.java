@@ -1,9 +1,9 @@
 package com.gemstone.gemfire.internal.offheap;
 
-//import static org.junit.Assert.*;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 import static com.googlecode.catchexception.CatchException.*;
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 
@@ -293,7 +293,6 @@ public class FreeListManagerTest {
 
     catchException(this.freeListManager).allocate(DEFAULT_SLAB_SIZE-7);
 
-    assertThat((Exception)caughtException()).isInstanceOf(OutOfOffHeapMemoryException.class);
     verify(ooohml).outOfOffHeapMemory(caughtException());
   }
   
