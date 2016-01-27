@@ -300,7 +300,7 @@ public class FreeListManager {
    * Or to prevent it from happening we could just check the incoming slabs and throw away a few bytes
    * to keep them from being contiguous.
    */
-  private boolean compact(int chunkSize) {
+  boolean compact(int chunkSize) {
     final long startCompactionTime = this.ma.getStats().startCompaction();
     final int countPreSync = this.compactCount.get();
     try {
@@ -322,9 +322,6 @@ public class FreeListManager {
           while (addr != 0) {
             int idx = Arrays.binarySearch(sorted, 0, sortedSize, addr);
             //System.out.println("DEBUG addr=" + addr + " size=" + Chunk.getSize(addr) + " idx="+idx + " sortedSize=" + sortedSize);
-            if (idx >= 0) {
-              throw new IllegalStateException("duplicate memory address found during compaction!");
-            }
             idx = -idx;
             idx--;
             if (idx == sortedSize) {
