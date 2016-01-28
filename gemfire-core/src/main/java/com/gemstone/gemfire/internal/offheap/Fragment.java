@@ -131,4 +131,9 @@ public class Fragment implements MemoryBlock {
     long value = this.getMemoryAddress();
     return (int)(value ^ (value >>> 32));
   }
+  @Override
+  public String toString() {
+    return "Fragment [baseAddr=" + baseAddr + ", size=" + size + ", freeIdx=" + freeIdx + "]";
+  }
+
 }

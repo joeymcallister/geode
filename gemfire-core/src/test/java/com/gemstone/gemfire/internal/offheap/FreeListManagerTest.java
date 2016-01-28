@@ -272,9 +272,71 @@ public class FreeListManagerTest {
     }
     
     assertThat(this.freeListManager.compact(DEFAULT_SLAB_SIZE)).isTrue();
+    assertThat(this.freeListManager.getFragmentList()).hasSize(4);
   }
   
   @Test
+  public void compactWithLiveChunks() {
+    int SMALL_SLAB = 16;
+    int MEDIUM_SLAB = 128;
+    this.freeListManager = new FreeListManager(ma, new UnsafeMemoryChunk[] {
+        new UnsafeMemoryChunk(SMALL_SLAB), 
+        new UnsafeMemoryChunk(SMALL_SLAB), 
+        new UnsafeMemoryChunk(MEDIUM_SLAB), 
+        slab});
+    ArrayList<Chunk> chunks = new ArrayList<>();
+    chunks.add(this.freeListManager.allocate(SMALL_SLAB-8+1));
+    this.freeListManager.allocate(DEFAULT_SLAB_SIZE/2-8);
+    chunks.add(this.freeListManager.allocate(DEFAULT_SLAB_SIZE/2-8));
+    this.freeListManager.allocate(SMALL_SLAB-8+1);
+    for (Chunk c: chunks) {
+      Chunk.release(c.getMemoryAddress(), this.freeListManager);
+    }
+    
+    assertThat(this.freeListManager.compact(DEFAULT_SLAB_SIZE/2)).isTrue();
+  }
+  
+  @Test
+  public void compactAfterAllocatingAll() {
+    setUpSingleSlabManager();
+    Chunk c = freeListManager.allocate(DEFAULT_SLAB_SIZE-8);
+    
+    assertThat(this.freeListManager.compact(1)).isFalse();
+    // call compact twice for extra code coverage
+    assertThat(this.freeListManager.compact(1)).isFalse();
+    assertThat(this.freeListManager.getFragmentList()).isEmpty();
+  }
+  
+  @Test
+  public void compactWithEmptyTinyFreeList() {
+    setUpSingleSlabManager();
+    Fragment originalFragment = this.freeListManager.getFragmentList().get(0);
+    Chunk c = freeListManager.allocate(16);
+    Chunk.release(c.getMemoryAddress(), this.freeListManager);
+    c = freeListManager.allocate(16);
+    
+    assertThat(this.freeListManager.compact(1)).isTrue();
+    assertThat(this.freeListManager.getFragmentList()).hasSize(1);
+    Fragment compactedFragment = this.freeListManager.getFragmentList().get(0);
+    assertThat(compactedFragment.getSize()).isEqualTo(originalFragment.getSize()-(16+8));
+    assertThat(compactedFragment.getMemoryAddress()).isEqualTo(originalFragment.getMemoryAddress()+(16+8));
+  }
+  
+  @Test
+  public void allocationsThatLeaveLessThanMinChunkSizeFreeInAFragment() {
+    int SMALL_SLAB = 16;
+    int MEDIUM_SLAB = 128;
+    this.freeListManager = new FreeListManager(ma, new UnsafeMemoryChunk[] {
+        new UnsafeMemoryChunk(SMALL_SLAB), 
+        new UnsafeMemoryChunk(SMALL_SLAB), 
+        new UnsafeMemoryChunk(MEDIUM_SLAB), 
+        slab});
+    this.freeListManager.allocate(DEFAULT_SLAB_SIZE-8-(Chunk.MIN_CHUNK_SIZE-1));
+    this.freeListManager.allocate(MEDIUM_SLAB-8-(Chunk.MIN_CHUNK_SIZE-1));
+    
+    assertThat(this.freeListManager.compact(SMALL_SLAB)).isTrue();
+  }
+ @Test
   public void maxAllocationUsesAllMemory() {
     setUpSingleSlabManager();
 

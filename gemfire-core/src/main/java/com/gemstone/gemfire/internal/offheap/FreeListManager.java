@@ -40,7 +40,7 @@ public class FreeListManager {
   /** The MemoryChunks that this allocator is managing by allocating smaller chunks of them.
    * The contents of this array never change.
    */
-  private final UnsafeMemoryChunk[] slabs;
+  private final AddressableMemoryChunk[] slabs;
   private final long totalSlabSize;
   
   final private AtomicReferenceArray<SyncChunkStack> tinyFreeLists = new AtomicReferenceArray<SyncChunkStack>(TINY_FREE_LIST_COUNT);
@@ -58,7 +58,7 @@ public class FreeListManager {
     }
     return result;
   }
-  private void getLiveChunks(UnsafeMemoryChunk slab, List<Chunk> result) {
+  private void getLiveChunks(AddressableMemoryChunk slab, List<Chunk> result) {
     long addr = slab.getMemoryAddress();
     while (addr <= (slab.getMemoryAddress() + slab.getSize() - Chunk.MIN_CHUNK_SIZE)) {
       Fragment f = isAddrInFragmentFreeSpace(addr);
@@ -126,7 +126,7 @@ public class FreeListManager {
   private final CopyOnWriteArrayList<Fragment> fragmentList;
   private final SimpleMemoryAllocatorImpl ma;
 
-  public FreeListManager(SimpleMemoryAllocatorImpl ma, final UnsafeMemoryChunk[] slabs) {
+  public FreeListManager(SimpleMemoryAllocatorImpl ma, final AddressableMemoryChunk[] slabs) {
     this.ma = ma;
     this.slabs = slabs;
     long total = 0;
@@ -479,6 +479,9 @@ public class FreeListManager {
     collectFreeHugeChunks(l);
     collectFreeTinyChunks(l);
   }
+  List<Fragment> getFragmentList() {
+    return this.fragmentList;
+  }
   private void collectFreeFragmentChunks(List<SyncChunkStack> l) {
     if (this.fragmentList.size() == 0) return;
     SyncChunkStack result = new SyncChunkStack();
@@ -490,14 +493,11 @@ public class FreeListManager {
         diff = f.getSize() - offset;
       } while (diff >= Chunk.MIN_CHUNK_SIZE && !f.allocate(offset, offset+diff));
       if (diff < Chunk.MIN_CHUNK_SIZE) {
-        if (diff > 0) {
-          SimpleMemoryAllocatorImpl.logger.debug("Lost memory of size {}", diff);
-        }
-        // fragment is too small to turn into a chunk
-        // TODO we need to make sure this never happens
-        // by keeping sizes rounded. I think I did this
-        // by introducing MIN_CHUNK_SIZE and by rounding
-        // the size of huge allocations.
+        // If diff > 0 then that memory will be lost during compaction.
+        // This should never happen since we keep the sizes rounded
+        // based on MIN_CHUNK_SIZE.
+        assert diff == 0;
+        // The current fragment is completely allocated so just skip it.
         continue;
       }
       long chunkAddr = f.getMemoryAddress()+offset;
@@ -861,7 +861,7 @@ public class FreeListManager {
    * be used. Note that this code does not bother
    * comparing the contents of the arrays.
    */
-  boolean okToReuse(UnsafeMemoryChunk[] newSlabs) {
+  boolean okToReuse(AddressableMemoryChunk[] newSlabs) {
     return newSlabs == null || newSlabs == this.slabs;
   }
   
@@ -870,7 +870,7 @@ public class FreeListManager {
   }
   int findSlab(long addr) {
     for (int i=0; i < this.slabs.length; i++) {
-      UnsafeMemoryChunk slab = this.slabs[i];
+      AddressableMemoryChunk slab = this.slabs[i];
       long slabAddr = slab.getMemoryAddress();
       if (addr >= slabAddr) {
         if (addr < slabAddr + slab.getSize()) {

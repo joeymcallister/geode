@@ -32,7 +32,6 @@ import org.junit.experimental.categories.Category;
 import com.gemstone.gemfire.OutOfOffHeapMemoryException;
 import com.gemstone.gemfire.cache.CacheClosedException;
 import com.gemstone.gemfire.internal.logging.NullLogWriter;
-import com.gemstone.gemfire.internal.offheap.UnsafeMemoryChunk.Factory;
 import com.gemstone.gemfire.test.junit.categories.UnitTest;
 
 @Category(UnitTest.class)
@@ -98,9 +97,9 @@ public class SimpleMemoryAllocatorJUnitTest {
       LastSevereLogger logger = new LastSevereLogger();
       try {
         SimpleMemoryAllocatorImpl.createForUnitTest(listener, stats, logger, 10, 950, 100,
-            new UnsafeMemoryChunk.Factory() {
+            new AddressableMemoryChunkFactory() {
           @Override
-          public UnsafeMemoryChunk create(int size) {
+          public AddressableMemoryChunk create(int size) {
             throw new OutOfMemoryError("expected");
           }
         });
@@ -117,10 +116,10 @@ public class SimpleMemoryAllocatorJUnitTest {
       LastSevereLogger logger = new LastSevereLogger();
       int MAX_SLAB_SIZE = 100;
       try {
-        Factory factory = new UnsafeMemoryChunk.Factory() {
+        AddressableMemoryChunkFactory factory = new AddressableMemoryChunkFactory() {
           private int createCount = 0;
           @Override
-          public UnsafeMemoryChunk create(int size) {
+          public AddressableMemoryChunk create(int size) {
             createCount++;
             if (createCount == 1) {
               return new UnsafeMemoryChunk(size);
@@ -140,9 +139,9 @@ public class SimpleMemoryAllocatorJUnitTest {
     {
       NullOutOfOffHeapMemoryListener listener = new NullOutOfOffHeapMemoryListener();
       NullOffHeapMemoryStats stats = new NullOffHeapMemoryStats();
-      Factory factory = new UnsafeMemoryChunk.Factory() {
+      AddressableMemoryChunkFactory factory = new AddressableMemoryChunkFactory() {
         @Override
-        public UnsafeMemoryChunk create(int size) {
+        public AddressableMemoryChunk create(int size) {
           return new UnsafeMemoryChunk(size);
         }
       };
