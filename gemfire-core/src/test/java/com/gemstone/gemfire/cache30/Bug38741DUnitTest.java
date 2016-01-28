@@ -50,10 +50,9 @@ import com.gemstone.gemfire.internal.cache.ha.HARegionQueue;
 import com.gemstone.gemfire.internal.cache.tier.sockets.CacheClientProxy;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientProxyMembershipID;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientUpdateMessageImpl;
-
-import dunit.DistributedTestCase;
-import dunit.Host;
-import dunit.VM;
+import com.gemstone.gemfire.test.dunit.DistributedTestCase;
+import com.gemstone.gemfire.test.dunit.Host;
+import com.gemstone.gemfire.test.dunit.VM;
 
 /**
  *
@@ -307,7 +306,7 @@ public class Bug38741DUnitTest extends ClientServerTestCase {
             BucketRegion br = (BucketRegion) r;
             try {
               KeyInfo keyInfo = new KeyInfo(k1, null, bucketId);
-              RawValue rv = br.getSerialized(keyInfo, false, false, null, false, false);
+              RawValue rv = br.getSerialized(keyInfo, false, false, null, null, false, false);
               Object val = rv.getRawValue();
               assertTrue(val instanceof CachedDeserializable);
               CachedDeserializable cd = (CachedDeserializable)val;

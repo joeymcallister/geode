@@ -611,7 +611,8 @@ public class LocalRegion extends AbstractRegion
     this.offHeap = attrs.getOffHeap() || Boolean.getBoolean(myName+":OFF_HEAP");
     if (getOffHeap()) {
       if (cache.getOffHeapStore() == null) {
-        throw new IllegalStateException("The region " + myName + " was configured to use off heap memory but no off heap memory was configured.");
+        throw new IllegalStateException(LocalizedStrings.
+            LocalRegion_THE_REGION_0_WAS_CONFIGURED_TO_USE_OFF_HEAP_MEMORY_BUT_OFF_HEAP_NOT_CONFIGURED.toLocalizedString(myName));
       }
     }
     
@@ -1552,7 +1553,7 @@ public class LocalRegion extends AbstractRegion
   @Retained
   Object nonTxnFindObject(KeyInfo keyInfo, boolean p_isCreate,
       boolean generateCallbacks, Object p_localValue, boolean disableCopyOnRead, boolean preferCD,
-      EntryEventImpl clientEvent, boolean returnTombstones, boolean allowReadFromHDFS) 
+      ClientProxyMembershipID requestingClient, EntryEventImpl clientEvent, boolean returnTombstones, boolean allowReadFromHDFS) 
       throws TimeoutException, CacheLoaderException
   {
     final Object key = keyInfo.getKey();
@@ -1627,7 +1628,7 @@ public class LocalRegion extends AbstractRegion
         }
         isCreate = localValue == null;
         result = findObjectInSystem(keyInfo, isCreate, null, generateCallbacks,
-            localValue, disableCopyOnRead, preferCD, null, clientEvent, returnTombstones, false/*allowReadFromHDFS*/);
+            localValue, disableCopyOnRead, preferCD, requestingClient, clientEvent, returnTombstones, false/*allowReadFromHDFS*/);
 
       } else {
         
