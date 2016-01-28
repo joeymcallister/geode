@@ -13,9 +13,12 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import com.gemstone.gemfire.OutOfOffHeapMemoryException;
+import com.gemstone.gemfire.test.junit.categories.UnitTest;
 
+@Category(UnitTest.class)
 public class FreeListManagerTest {
   static {
     ClassLoader.getSystemClassLoader().setDefaultAssertionStatus(true);
