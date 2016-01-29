@@ -132,7 +132,7 @@ public class FreeListManager {
     long total = 0;
     Fragment[] tmp = new Fragment[slabs.length];
     for (int i=0; i < slabs.length; i++) {
-      tmp[i] = new Fragment(slabs[i].getMemoryAddress(), slabs[i].getSize());
+      tmp[i] = createFragment(slabs[i].getMemoryAddress(), slabs[i].getSize());
       total += slabs[i].getSize();
     }
     this.fragmentList = new CopyOnWriteArrayList<Fragment>(tmp);
@@ -141,6 +141,14 @@ public class FreeListManager {
     fillFragments();
   }
 
+  /**
+   * Create and return a Fragment.
+   * This method exists so that tests can override it.
+   */
+  protected Fragment createFragment(long addr, int size) {
+    return new Fragment(addr, size);
+  }
+  
   /**
    * Fills all fragments with a fill used for data integrity validation 
    * if fill validation is enabled.
@@ -404,7 +412,7 @@ public class FreeListManager {
           long addr = sorted[i];
           if (addr == 0L) continue;
           int addrSize = Chunk.getSize(addr);
-          Fragment f = new Fragment(addr, addrSize);
+          Fragment f = createFragment(addr, addrSize);
           if (addrSize >= chunkSize) {
             result = true;
           }
@@ -425,7 +433,7 @@ public class FreeListManager {
 
         this.ma.getStats().setLargestFragment(largestFragment);
         this.ma.getStats().setFragments(tmp.size());        
-        updateFragmentation();
+        updateFragmentation(largestFragment);
 
         return result;
       } // sync
@@ -455,12 +463,11 @@ public class FreeListManager {
     }
   }
   
-  private void updateFragmentation() {      
-    long freeSize = this.ma.getStats().getFreeMemory();
+  private void updateFragmentation(long largestFragment) {      
+    long freeSize = getFreeMemory();
 
     // Calculate free space fragmentation only if there is free space available.
     if(freeSize > 0) {
-      long largestFragment = this.ma.getStats().getLargestFragment();
       long numerator = freeSize - largestFragment;
 
       double percentage = (double) numerator / (double) freeSize;

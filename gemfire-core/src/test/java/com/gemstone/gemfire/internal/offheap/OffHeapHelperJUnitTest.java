@@ -129,7 +129,7 @@ public class OffHeapHelperJUnitTest extends AbstractStoredObjectTestBase {
   }
 
   private GemFireChunk createChunk(byte[] v, boolean isSerialized, boolean isCompressed) {
-    GemFireChunk chunk = (GemFireChunk) ma.allocateAndInitialize(v, isSerialized, isCompressed, GemFireChunk.TYPE);
+    GemFireChunk chunk = (GemFireChunk) ma.allocateAndInitialize(v, isSerialized, isCompressed);
     return chunk;
   }
 
