@@ -16,6 +16,9 @@
  */
 package com.gemstone.gemfire.internal.cache.wan.serial;
 
+import static com.gemstone.gemfire.test.dunit.Wait.*;
+import static com.gemstone.gemfire.test.dunit.IgnoredException.*;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -28,15 +31,18 @@ public class SerialWANStatsDUnitTest extends WANTestBase {
   
   private static final long serialVersionUID = 1L;
 
+  private String testName;
+  
   public SerialWANStatsDUnitTest(String name) {
     super(name);
   }
 
   public void setUp() throws Exception {
     super.setUp();
-    addExpectedException("java.net.ConnectException");
-    addExpectedException("java.net.SocketException");
-    addExpectedException("Unexpected IOException");
+    this.testName = getTestMethodName();
+    addIgnoredException("java.net.ConnectException");
+    addIgnoredException("java.net.SocketException");
+    addIgnoredException("Unexpected IOException");
   }
   
   public void testReplicatedSerialPropagation() throws Exception {
@@ -552,7 +558,6 @@ public class SerialWANStatsDUnitTest extends WANTestBase {
     
     vm4.invoke(WANTestBase.class, "putGivenKeyValue", new Object[] { testName, keyValues });
 
-    pause(5000);
     vm4.invoke(WANTestBase.class, "checkQueueSize", new Object[] { "ln", keyValues.size() });
     for(int i=0;i<500;i++) {
       updateKeyValues.put(i, i+"_updated");
@@ -560,8 +565,6 @@ public class SerialWANStatsDUnitTest extends WANTestBase {
     
     vm4.invoke(WANTestBase.class, "putGivenKeyValue", new Object[] { testName, updateKeyValues });
 
-    pause(5000);
-    
     vm4.invoke(WANTestBase.class, "checkQueueSize", new Object[] { "ln", keyValues.size()  + updateKeyValues.size() });
 
     vm2.invoke(WANTestBase.class, "validateRegionSize", new Object[] {
@@ -569,8 +572,6 @@ public class SerialWANStatsDUnitTest extends WANTestBase {
     
     vm4.invoke(WANTestBase.class, "putGivenKeyValue", new Object[] { testName, updateKeyValues });
 
-    pause(5000);
-    
     vm4.invoke(WANTestBase.class, "checkQueueSize", new Object[] { "ln", keyValues.size()  + updateKeyValues.size() });
 
     vm4.invoke(WANTestBase.class, "resumeSender", new Object[] { "ln" });

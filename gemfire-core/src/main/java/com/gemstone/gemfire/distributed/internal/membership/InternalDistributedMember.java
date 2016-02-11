@@ -445,7 +445,7 @@ public final class InternalDistributedMember
    * [GemStone] Returns the kind of VM that hosts the distribution manager with
    * this address.
    *
-   * @see com.gemstone.gemfire.distributed.internal.DistributionManager#getDistributionManagerType
+   * @see com.gemstone.gemfire.distributed.internal.DistributionManager#getDMType()
    * @see com.gemstone.gemfire.distributed.internal.DistributionManager#NORMAL_DM_TYPE
    */
   public int getVmKind()
@@ -784,7 +784,7 @@ public final class InternalDistributedMember
         sb.append(vmStr);
         sb.append(")");
       }
-      if (netMbr.preferredForCoordinator()) {
+      if (vmKind != DistributionManager.LONER_DM_TYPE && netMbr.preferredForCoordinator()) {
         sb.append("<ec>");
       }
       if (this.vmViewId >= 0) {

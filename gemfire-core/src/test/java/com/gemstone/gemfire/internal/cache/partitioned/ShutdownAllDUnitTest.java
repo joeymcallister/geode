@@ -55,13 +55,16 @@ import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.PutAllPartialResultException;
 import com.gemstone.gemfire.internal.cache.control.InternalResourceManager;
 import com.gemstone.gemfire.internal.cache.control.InternalResourceManager.ResourceObserver;
+import com.gemstone.gemfire.test.dunit.Assert;
 import com.gemstone.gemfire.test.dunit.AsyncInvocation;
 import com.gemstone.gemfire.test.dunit.DistributedTestCase;
 import com.gemstone.gemfire.test.dunit.Host;
+import com.gemstone.gemfire.test.dunit.Invoke;
 import com.gemstone.gemfire.test.dunit.RMIException;
 import com.gemstone.gemfire.test.dunit.SerializableCallable;
 import com.gemstone.gemfire.test.dunit.SerializableRunnable;
 import com.gemstone.gemfire.test.dunit.VM;
+import com.gemstone.gemfire.test.dunit.Wait;
 
 /**
  * Tests the basic use cases for PR persistence.
@@ -72,10 +75,6 @@ public class ShutdownAllDUnitTest extends CacheTestCase {
   protected static HangingCacheListener listener;
 
 
-  /**
-   * @param name
-   */
-  
   final String expectedExceptions = InternalGemFireError.class.getName()+"||ShutdownAllRequest: disconnect distributed without response";
 
   public ShutdownAllDUnitTest(String name) {
@@ -146,7 +145,7 @@ public class ShutdownAllDUnitTest extends CacheTestCase {
     createData(vm0, 0, numBuckets, "a", "region");
 
     vm0.invoke(addExceptionTag1(expectedExceptions));
-    invokeInEveryVM(new SerializableRunnable("set TestInternalGemFireError") {
+    Invoke.invokeInEveryVM(new SerializableRunnable("set TestInternalGemFireError") {
       public void run() {
         System.setProperty("TestInternalGemFireError", "true");
       }
@@ -155,7 +154,7 @@ public class ShutdownAllDUnitTest extends CacheTestCase {
     
     assertTrue(InternalDistributedSystem.getExistingSystems().isEmpty());
     
-    invokeInEveryVM(new SerializableRunnable("reset TestInternalGemFireError") {
+    Invoke.invokeInEveryVM(new SerializableRunnable("reset TestInternalGemFireError") {
       public void run() {
         System.setProperty("TestInternalGemFireError", "false");
       }
@@ -182,7 +181,7 @@ public class ShutdownAllDUnitTest extends CacheTestCase {
     
     vm0.invoke(addExceptionTag1(expectedExceptions));
     vm1.invoke(addExceptionTag1(expectedExceptions));
-    invokeInEveryVM(new SerializableRunnable("set TestInternalGemFireError") {
+    Invoke.invokeInEveryVM(new SerializableRunnable("set TestInternalGemFireError") {
       public void run() {
         System.setProperty("TestInternalGemFireError", "true");
       }
@@ -191,7 +190,7 @@ public class ShutdownAllDUnitTest extends CacheTestCase {
     
     assertTrue(InternalDistributedSystem.getExistingSystems().isEmpty());
     
-    invokeInEveryVM(new SerializableRunnable("reset TestInternalGemFireError") {
+    Invoke.invokeInEveryVM(new SerializableRunnable("reset TestInternalGemFireError") {
       public void run() {
         System.setProperty("TestInternalGemFireError", "false");
       }
@@ -487,7 +486,7 @@ public class ShutdownAllDUnitTest extends CacheTestCase {
     });
     
     //wait for shutdown to finish
-    pause(10000);
+    Wait.pause(10000);
     
     // restart vm0
     AsyncInvocation a0 = createRegionAsync(vm0, "region", "disk", true, 1);
@@ -550,7 +549,7 @@ public class ShutdownAllDUnitTest extends CacheTestCase {
     AsyncInvocation a0 = createRegionAsync(vm0, "region", "disk", true, 1);
     
     //Wait a bit for the initialization to get stuck
-    pause(20000);
+    Wait.pause(20000);
     assertTrue(a0.isAlive());
     
     //Do another shutdown all, with a member offline and another stuck
@@ -722,7 +721,7 @@ public class ShutdownAllDUnitTest extends CacheTestCase {
           try {
             recoveryDone.await();
           } catch (InterruptedException e) {
-            fail("Interrupted", e);
+            Assert.fail("Interrupted", e);
           }
         }
       }
